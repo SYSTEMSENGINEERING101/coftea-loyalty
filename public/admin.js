@@ -234,7 +234,11 @@ function renderCalendar() {
     const title = document.createElement('div');
     title.className = 'calmonth-name';
     const { y, m } = parts(first);
-    title.textContent = `${MONTH_NAMES[m - 1]} ${y}`;
+    const month = document.createElement('b');
+    month.textContent = MONTH_NAMES[m - 1];
+    const year = document.createElement('span');
+    year.textContent = String(y);
+    title.append(month, year);
 
     const grid = document.createElement('div');
     grid.className = 'calgrid';
