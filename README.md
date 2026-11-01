@@ -140,7 +140,7 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 8. Print a QR code pointing at the site root and put it on the counter / table tent.
 9. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
 
-**Daily overview:** the Overview panel defaults to today. Use the calendar chip for presets (Today, Yesterday, This month, This year, Last month) or click two dates for a custom range. Used codes, new cards, stamps and rewards follow the range; codes and unused stock are always all-time totals.
+**Daily overview:** the Overview panel defaults to today. Use the calendar chip for presets (Today, Yesterday, This month, This year, Last month) or click two dates for a custom range. Used codes, new cards, stamps and rewards follow the range; codes and unused stock are always all-time totals. Each card is clickable: Codes/Unused/Used jump to the Codes table with that filter applied, and New cards/Stamps/Rewards jump to the customer card list.
 
 **Find a customer:** the card table lists the 5 most recent cards; search by phone number or card id, then **Open** a card to see every stamp (slot, code, time) and claimed reward for the current cycle, plus lifetime totals.
 

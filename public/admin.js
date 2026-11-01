@@ -103,6 +103,15 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1.5"></rect><path d="M3 10h18v3H3zM12 10v10"></path><path d="M12 10c-1.5-4-5-5-5-2.5S10 10 12 10Zm0 0c1.5-4 5-5 5-2.5S14 10 12 10Z"></path></svg>',
 };
 
+const STAT_LINKS = {
+  codes: { panel: 'panel-codes', filter: 'all', label: 'Open codes' },
+  unused: { panel: 'panel-codes', filter: 'unused', label: 'Open unused codes' },
+  used: { panel: 'panel-codes', filter: 'used', label: 'Open used codes' },
+  cards: { panel: 'panel-cards', label: 'Open customer cards' },
+  stamps: { panel: 'panel-cards', label: 'Open customer cards' },
+  rewards: { panel: 'panel-cards', label: 'Open customer cards' },
+};
+
 async function loadStats() {
   const params = new URLSearchParams({ from: range.from, to: range.to });
   const data = await request(`/admin/stats?${params}`, { auth: token });
@@ -119,8 +128,13 @@ async function loadStats() {
   const wrap = el('stats');
   wrap.replaceChildren();
   items.forEach(([key, label, value, tag]) => {
-    const box = document.createElement('div');
-    box.className = 'stat';
+    const link = STAT_LINKS[key];
+
+    const box = document.createElement('button');
+    box.type = 'button';
+    box.className = 'stat stat-link';
+    box.setAttribute('aria-label', `${label}: ${value ?? 0} (${tag}). ${link.label}.`);
+    box.addEventListener('click', () => jumpToStat(key));
 
     const icon = document.createElement('span');
     icon.className = 'stat-icon';
@@ -137,12 +151,46 @@ async function loadStats() {
     note.textContent = tag;
     body.append(name, num, note);
 
-    box.append(icon, body);
+    const go = document.createElement('span');
+    go.className = 'stat-go';
+    go.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>';
+
+    box.append(icon, body, go);
     wrap.appendChild(box);
   });
 
   updateRangeButton();
-  el('stats-scope').textContent = `Showing ${rangeText(range.from, range.to)}. Used, new cards, stamps and rewards cover that period; codes and unused stock are all-time.`;
+  el('stats-scope').textContent = `Showing ${rangeText(range.from, range.to)}. Used, new cards, stamps and rewards cover that period; codes and unused stock are all-time. Click a card to jump to its section.`;
+}
+
+async function jumpToStat(key) {
+  const link = STAT_LINKS[key];
+  if (!link) return;
+
+  if (link.filter && el('code-status').value !== link.filter) {
+    el('code-status').value = link.filter;
+    if (selectedBatch) {
+      try {
+        await loadCodes();
+      } catch (err) {
+        toast(err.message);
+      }
+    } else {
+      toast('Generate a batch first to see its codes.');
+    }
+  }
+
+  focusPanel(link.panel);
+}
+
+function focusPanel(id) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  panel.classList.remove('flash');
+  void panel.offsetWidth;
+  panel.classList.add('flash');
 }
 
 function todayIso() {
