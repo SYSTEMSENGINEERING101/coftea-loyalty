@@ -119,10 +119,42 @@ check('phone is saved and normalised', phone.status === 200 && phone.data.phone 
 const found = await call('/admin/cards?q=9170001122', { token: TOKEN });
 check('staff can find the card by phone', found.data.cards.some((c) => c.id === card.id));
 
-// 8. stats
+const recent = await call('/admin/cards', { token: TOKEN });
+check('card list defaults to 5 recent cards', recent.data.limit === 5 && recent.data.cards.length <= 5 && typeof recent.data.total === 'number');
+
+const detail = await call(`/admin/cards/${card.id}`, { token: TOKEN });
+check(
+  'card detail returns stamps, rewards and lifetime totals',
+  detail.status === 200 &&
+    detail.data.card.id === card.id &&
+    detail.data.stamps.length === 0 &&
+    Array.isArray(detail.data.rewards) &&
+    detail.data.lifetime.stamps >= 16,
+  `status ${detail.status}`
+);
+
+// 8. daily stats
 const stats = await call('/admin/stats', { token: TOKEN });
-check('stats count the burned codes', Number(stats.data.codes_used) >= 16, `used ${stats.data.codes_used}`);
-check('stats count the rewards', Number(stats.data.rewards_total) >= 2, `rewards ${stats.data.rewards_total}`);
+check('stats report a daily date', /^\d{4}-\d{2}-\d{2}$/.test(stats.data.date || ''), stats.data.date);
+check('stats count today\'s burned codes', Number(stats.data.codes_used) >= 16, `used ${stats.data.codes_used}`);
+check('stats count today\'s rewards', Number(stats.data.rewards_day) >= 2, `rewards ${stats.data.rewards_day}`);
+check('stats keep unused stock as an all-time total', Number(stats.data.codes_unused) >= 3, `unused ${stats.data.codes_unused}`);
+
+const oldDay = await call('/admin/stats?date=2000-01-01', { token: TOKEN });
+check('an empty day reports zero activity', Number(oldDay.data.stamps_day) === 0 && Number(oldDay.data.codes_used) === 0);
+
+// 9. reset codes
+const clearUnused = await call('/admin/codes/reset', { method: 'POST', token: TOKEN, body: { mode: 'unused' } });
+check('unused codes can be cleared', clearUnused.status === 200 && clearUnused.data.deleted_codes >= 1, `status ${clearUnused.status}`);
+
+const afterUnused = await call('/admin/stats', { token: TOKEN });
+check('unused stock is zero after clearing', Number(afterUnused.data.codes_unused) === 0);
+
+const clearAll = await call('/admin/codes/reset', { method: 'POST', token: TOKEN, body: { mode: 'all' } });
+check('every code can be deleted', clearAll.status === 200 && clearAll.data.mode === 'all');
+
+const afterAll = await call('/admin/stats', { token: TOKEN });
+check('codes are zero after a full reset', Number(afterAll.data.codes_total) === 0 && Number(afterAll.data.codes_unused) === 0);
 
 console.log(`\n${passed} checks passed, ${failures.length} failed`);
 if (failures.length) {

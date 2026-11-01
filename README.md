@@ -1,6 +1,6 @@
 # Coftea Cafe — Ipil · Virtual Loyalty Card
 
-A real, server-side loyalty card: customers collect 16 stamps by entering one-time 7-digit codes that staff hand out with each drink. Slot 8 is a free upsize, slot 16 is a free drink. Staff generate codes in batches and print 10×50 sheets.
+A real, server-side loyalty card: customers collect 16 stamps by entering one-time 7-digit codes that staff hand out with each drink. Slot 8 is a free upsize, slot 16 is a free drink. Staff generate codes in batches and print POS-sized slips.
 
 **Stack:** Cloudflare Pages (static + `_worker.js`) · D1 (SQLite) · vanilla JS · no build step.
 
@@ -130,13 +130,20 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 
 1. Open `/admin.html`, sign in with the admin token.
 2. **Generate a code batch**: label `November 2026`, 500 codes, 90 days.
-3. Choose a sheet layout:
-   - **10 × 50** — 500 slips on one A4 page, small text
-   - **10 × 25** — 250 slips per page, twice the size, 2 pages for 500
-4. Click **Print**, then in the browser dialog pick **A4**, **100% scale**, and turn **off** headers and footers.
-5. Cut the slips and keep them at the register. Hand one per drink.
-6. Print a QR code pointing at the site root and put it on the counter / table tent.
-7. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
+3. Pick a **receipt width**: `58 mm` for a small POS printer or `80 mm` for a standard one.
+4. Print either:
+   - the whole batch — **Print** on the batch row (prints every unused code), or
+   - only the slips you need — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
+5. Each slip prints on its own receipt page with the café name, the 7-digit code and the expiry. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
+6. Hand one slip per drink.
+7. Print a QR code pointing at the site root and put it on the counter / table tent.
+8. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
+
+**Daily overview:** the Overview panel shows today's used codes, new cards, stamps and rewards, with a date picker and ‹ › day buttons for previous days. Codes and unused stock are always shown as all-time totals.
+
+**Find a customer:** the card table lists the 5 most recent cards; search by phone number or card id, then **Open** a card to see every stamp (slot, code, time) and claimed reward for the current cycle, plus lifetime totals.
+
+**Resetting codes:** the Reset codes panel can delete all unused codes (keeps used ones and their history) or delete every code and batch. Both ask for a typed confirmation and never touch cards or stamps.
 
 **How long a batch lasts:** one code = one stamp, so 500 codes = 500 drinks ≈ 31 complete cards (31 free drinks + 31 upsizes). At 50 drinks a day that is about 10 days. Generate batches ahead of time; old batches keep working until they expire, so nothing you have printed goes dead when a new batch is made.
 
@@ -160,10 +167,12 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 
 ## 6. Printing notes
 
-- The sheet header shows the batch label, batch id and expiry. Slips carry only the code, so keep the batch list in the admin.
-- Cut lines are dashed; the outer border is solid.
+- Slips are sized for POS receipt paper: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
+- Each slip carries only the café name, the code, "1 code = 1 stamp" and the expiry. The batch label and id stay in the admin.
+- Printing a batch produces one slip per code; printing a selection produces one slip per ticked code. Hand over exactly the slips you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.
+- If the browser's print preview shows a full A4 page, check that the printer's paper size is set to the receipt roll (58 mm or 80 mm) rather than A4.
 
 ---
 
@@ -206,5 +215,5 @@ Do this monthly and after every new batch. On Windows PowerShell, use `"backups/
 | Admin says "Admin token is not configured" | `.dev.vars` missing locally, or the secret was added after the last deployment — deploy again |
 | Bindings empty / `env.DB` undefined | the D1 binding was added after the last deployment — create a new deployment (dashboard) or redeploy (CLI) |
 | Every code says invalid | the code's batch expired, or you are testing against a different database than the one that generated them |
-| Print sheet is blank | print from the browser dialog after the sheet builds; check that "background graphics" is irrelevant (borders are real borders) |
+| Print sheet is blank | wait for the slip list to build, then confirm the print dialog opened; if the preview is A4-sized, set the printer paper to 58 mm / 80 mm receipt paper |
 | Code refuses to stamp | slot order: the card only accepts the next slot in sequence |

@@ -37,13 +37,17 @@ async function handleApi(request, env, url, seg) {
     if (seg[0] === 'admin') {
       const denied = requireAdmin(request, env);
       if (denied) return denied;
-      if (seg[1] === 'stats' && method === 'GET') return adminStats(env);
+      if (seg[1] === 'stats' && method === 'GET') return adminStats(env, url);
       if (seg[1] === 'batches' && seg.length === 2 && method === 'GET') return listBatches(env);
       if (seg[1] === 'batches' && seg.length === 2 && method === 'POST') return createBatch(request, env);
       if (seg[1] === 'batches' && seg.length === 4 && seg[3] === 'codes' && method === 'GET') {
         return listCodes(env, seg[2], url);
       }
-      if (seg[1] === 'cards' && method === 'GET') return findCards(env, url);
+      if (seg[1] === 'cards' && seg.length === 2 && method === 'GET') return findCards(env, url);
+      if (seg[1] === 'cards' && seg.length === 3 && method === 'GET') return cardDetail(env, seg[2]);
+      if (seg[1] === 'codes' && seg.length === 3 && seg[2] === 'reset' && method === 'POST') {
+        return resetCodes(request, env);
+      }
     }
 
     return json({ error: 'Not found.' }, 404);
@@ -236,22 +240,31 @@ function tooManyAttempts() {
 
 /* ------------------------------------------------------------------ admin */
 
-async function adminStats(env) {
+async function adminStats(env, url) {
+  const date = normalizeDate(url.searchParams.get('date'));
+  const start = new Date(`${date}T00:00:00+08:00`);
+  const end = new Date(start.getTime() + 86400000);
+  const from = start.toISOString();
+  const to = end.toISOString();
+
   const row = await env.DB.prepare(
     `SELECT
        (SELECT COUNT(*) FROM codes) AS codes_total,
        (SELECT COUNT(*) FROM codes WHERE used_at IS NULL) AS codes_unused,
-       (SELECT COUNT(*) FROM codes WHERE used_at IS NOT NULL) AS codes_used,
-       (SELECT COUNT(*) FROM cards) AS cards_total,
-       (SELECT COUNT(*) FROM stamps) AS stamps_total,
-       (SELECT COUNT(*) FROM redemptions) AS rewards_total`
-  ).first();
-
-  const week = await env.DB.prepare('SELECT COUNT(*) AS n FROM stamps WHERE stamped_at >= ?')
-    .bind(new Date(Date.now() - 7 * 86400000).toISOString())
+       (SELECT COUNT(*) FROM codes WHERE used_at >= ? AND used_at < ?) AS codes_used,
+       (SELECT COUNT(*) FROM cards WHERE created_at >= ? AND created_at < ?) AS cards_new,
+       (SELECT COUNT(*) FROM stamps WHERE stamped_at >= ? AND stamped_at < ?) AS stamps_day,
+       (SELECT COUNT(*) FROM redemptions WHERE claimed_at >= ? AND claimed_at < ?) AS rewards_day`
+  )
+    .bind(from, to, from, to, from, to, from, to)
     .first();
 
-  return json({ ...row, stamps_week: week.n });
+  return json({ ...row, date, timezone: 'Asia/Manila (+08:00)' });
+}
+
+function normalizeDate(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return value;
+  return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
 }
 
 async function listBatches(env) {
@@ -341,21 +354,87 @@ async function listCodes(env, batchId, url) {
 
 async function findCards(env, url) {
   const q = (url.searchParams.get('q') || '').trim().slice(0, 40);
-  const like = '%' + q + '%';
+  const digits = q.replace(/\D/g, '');
+  const limit = clampInt(url.searchParams.get('limit'), 1, 50, q ? 25 : 5);
+
+  const where = q ? 'WHERE c.id LIKE ? OR c.phone LIKE ?' : '';
+  const params = q ? [`%${q}%`, `%${digits || q}%`] : [];
 
   const rows = await env.DB.prepare(
     `SELECT c.id, c.phone, c.created_at, c.last_seen_at, c.cycle,
             (SELECT COUNT(*) FROM stamps s WHERE s.card_id = c.id AND s.cycle = c.cycle) AS stamps,
             (SELECT COUNT(*) FROM redemptions r WHERE r.card_id = c.id AND r.cycle = c.cycle) AS rewards
        FROM cards c
-      WHERE (? = '' OR c.phone LIKE ? OR c.id LIKE ?)
+       ${where}
       ORDER BY c.last_seen_at DESC
-      LIMIT 25`
+      LIMIT ?`
   )
-    .bind(q, like, like)
+    .bind(...params, limit)
     .all();
 
-  return json({ cards: rows.results || [] });
+  const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM cards c ${where}`)
+    .bind(...params)
+    .first();
+
+  return json({ cards: rows.results || [], total: Number(total.n || 0), limit });
+}
+
+async function cardDetail(env, id) {
+  const card = await getCard(env, id);
+  if (!card) return json({ error: 'Card not found.' }, 404);
+
+  const stamps = await env.DB.prepare(
+    'SELECT slot, code, stamped_at FROM stamps WHERE card_id = ? AND cycle = ? ORDER BY slot'
+  )
+    .bind(id, card.cycle)
+    .all();
+
+  const rewards = await env.DB.prepare(
+    'SELECT milestone, claimed_at FROM redemptions WHERE card_id = ? AND cycle = ? ORDER BY milestone'
+  )
+    .bind(id, card.cycle)
+    .all();
+
+  const lifetime = await env.DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM stamps WHERE card_id = ?) AS stamps,
+            (SELECT COUNT(*) FROM redemptions WHERE card_id = ?) AS rewards`
+  )
+    .bind(id, id)
+    .first();
+
+  return json({
+    card: {
+      id: card.id,
+      phone: card.phone || null,
+      cycle: card.cycle,
+      created_at: card.created_at,
+      last_seen_at: card.last_seen_at,
+    },
+    stamps: stamps.results || [],
+    rewards: rewards.results || [],
+    lifetime: { stamps: Number(lifetime.stamps || 0), rewards: Number(lifetime.rewards || 0) },
+  });
+}
+
+async function resetCodes(request, env) {
+  const body = await readJson(request);
+  const mode = body.mode === 'all' ? 'all' : 'unused';
+
+  const statements =
+    mode === 'all'
+      ? [env.DB.prepare('DELETE FROM codes'), env.DB.prepare('DELETE FROM batches')]
+      : [
+          env.DB.prepare('DELETE FROM codes WHERE used_at IS NULL'),
+          env.DB.prepare('DELETE FROM batches WHERE id NOT IN (SELECT DISTINCT batch_id FROM codes)'),
+        ];
+
+  const results = await env.DB.batch(statements);
+
+  return json({
+    mode,
+    deleted_codes: Number((results[0] && results[0].meta && results[0].meta.changes) || 0),
+    deleted_batches: Number((results[1] && results[1].meta && results[1].meta.changes) || 0),
+  });
 }
 
 /* ---------------------------------------------------------------- helpers */

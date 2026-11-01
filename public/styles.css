@@ -782,6 +782,123 @@ dialog::backdrop {
   line-height: 1;
 }
 
+.stat-tag {
+  display: block;
+  margin-top: 5px;
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.daypick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.daypick .input {
+  width: 148px;
+  padding: 7px 9px;
+  font-size: 11.5px;
+}
+
+.pick {
+  width: 30px;
+  padding-right: 0;
+}
+
+.pick input {
+  accent-color: var(--ink);
+  width: 14px;
+  height: 14px;
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+
+tr.clickable:hover td {
+  background: #fbf9f6;
+}
+
+.split {
+  display: grid;
+  gap: 18px;
+  margin-top: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.subhead {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.card-detail {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+}
+
+.slot-strip {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+}
+
+@media (min-width: 720px) {
+  .slot-strip {
+    grid-template-columns: repeat(16, 1fr);
+  }
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.slot.filled {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.slot.milestone {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.slot.filled.milestone {
+  color: #fff;
+}
+
+.mini.danger {
+  background: #fff;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.mini.danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
@@ -935,12 +1052,52 @@ td.right {
   display: none;
 }
 
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 8mm;
-  }
+.pos-slip {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  padding: 3mm 4mm;
+  text-align: center;
+  font-family: var(--sans);
+  color: #000;
+  overflow: hidden;
+}
 
+.pos-brand {
+  font-family: var(--serif);
+  font-size: 10pt;
+  font-weight: 600;
+}
+
+.pos-caption {
+  font-size: 6pt;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pos-code {
+  font-family: var(--mono);
+  font-size: 21pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.pos-note {
+  font-size: 6.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pos-meta {
+  font-size: 5.5pt;
+  color: #555;
+}
+
+@media print {
   body {
     background: #fff;
   }
@@ -954,88 +1111,13 @@ td.right {
     display: block;
   }
 
-  .sheet {
+  .pos-slip {
     page-break-after: always;
     break-after: page;
   }
 
-  .sheet:last-child {
+  .pos-slip:last-child {
     page-break-after: auto;
     break-after: auto;
   }
-
-  .cut-cell {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-}
-
-.sheet {
-  font-family: var(--sans);
-  color: #111;
-}
-
-.sheet-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8mm;
-  padding-bottom: 2mm;
-  margin-bottom: 1.5mm;
-  border-bottom: 0.3mm solid #111;
-  font-size: 6.5pt;
-  letter-spacing: 0.04em;
-}
-
-.sheet-head b {
-  font-family: var(--serif);
-  font-size: 8.5pt;
-  letter-spacing: 0;
-}
-
-.cut-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  border-top: 0.35mm solid #444;
-  border-left: 0.35mm solid #444;
-}
-
-.cut-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5mm;
-  overflow: hidden;
-  border-right: 0.3mm dashed #8f8880;
-  border-bottom: 0.3mm dashed #8f8880;
-}
-
-.layout-50 .cut-cell {
-  height: 5.1mm;
-}
-
-.layout-50 .cut-code {
-  font-family: var(--mono);
-  font-size: 6.8pt;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.layout-25 .cut-cell {
-  height: 10.2mm;
-}
-
-.layout-25 .cut-code {
-  font-family: var(--mono);
-  font-size: 8.6pt;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.cut-note {
-  font-size: 4.6pt;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #6a6a6a;
 }

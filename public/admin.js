@@ -6,8 +6,10 @@ let token = sessionStorage.getItem(TOKEN_KEY) || '';
 let batches = [];
 let selectedBatch = null;
 let selectedCodes = [];
+let picked = new Set();
 let toastTimer = null;
 let searchTimer = null;
+let cardsTimer = null;
 
 /* ------------------------------------------------------------------ api */
 
@@ -72,37 +74,50 @@ async function showApp() {
   el('app').hidden = false;
   el('sign-out').hidden = false;
 
+  if (!el('stats-date').value) el('stats-date').value = cafeToday();
+
   try {
-    await Promise.all([loadStats(), loadBatches()]);
+    await Promise.all([loadStats(), loadBatches(), lookupCards('')]);
   } catch (err) {
     if (err.status === 401) signOut(false);
     else toast(err.message);
   }
 }
 
+function cafeToday() {
+  return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+}
+
 async function loadStats() {
-  const data = await request('/admin/stats', { auth: token });
+  const date = el('stats-date').value || cafeToday();
+  const data = await request(`/admin/stats?date=${encodeURIComponent(date)}`, { auth: token });
+
   const items = [
-    ['Codes', data.codes_total],
-    ['Unused', data.codes_unused],
-    ['Used', data.codes_used],
-    ['Cards', data.cards_total],
-    ['Stamps', data.stamps_total],
-    ['Rewards', data.rewards_total],
+    ['Codes', data.codes_total, 'all time'],
+    ['Unused', data.codes_unused, 'all time'],
+    ['Used', data.codes_used, 'that day'],
+    ['New cards', data.cards_new, 'that day'],
+    ['Stamps', data.stamps_day, 'that day'],
+    ['Rewards', data.rewards_day, 'that day'],
   ];
 
   const wrap = el('stats');
   wrap.replaceChildren();
-  items.forEach(([label, value]) => {
+  items.forEach(([label, value, tag]) => {
     const box = document.createElement('div');
     box.className = 'stat';
     const name = document.createElement('span');
     name.textContent = label;
     const num = document.createElement('b');
     num.textContent = String(value ?? 0);
-    box.append(name, num);
+    const note = document.createElement('em');
+    note.className = 'stat-tag';
+    note.textContent = tag;
+    box.append(name, num, note);
     wrap.appendChild(box);
   });
+
+  el('stats-scope').textContent = `Daily summary for ${fmtDay(date)}. Used, new cards, stamps and rewards cover that day; codes and unused stock are all-time.`;
 }
 
 async function loadBatches() {
@@ -174,7 +189,18 @@ async function loadBatches() {
     rows.appendChild(tr);
   });
 
-  if (!selectedBatch && batches.length) selectBatch(batches[0]);
+  if (selectedBatch && !batches.some((b) => b.id === selectedBatch.id)) selectedBatch = null;
+
+  if (!batches.length) {
+    selectedCodes = [];
+    picked.clear();
+    el('codes-title').textContent = 'Codes';
+    el('codes-sub').textContent = 'No batches yet. Generate a batch above.';
+    el('code-rows').replaceChildren(emptyRow(4, 'No codes yet.'));
+    updatePrintButton();
+  } else if (!selectedBatch) {
+    await selectBatch(batches[0]);
+  }
 }
 
 /* --------------------------------------------------------------- codes */
@@ -198,6 +224,7 @@ async function loadCodes() {
 
   const data = await request(`/admin/batches/${encodeURIComponent(selectedBatch.id)}/codes?${params}`, { auth: token });
   selectedCodes = data.codes || [];
+  picked.clear();
   renderCodes();
 }
 
@@ -206,12 +233,34 @@ function renderCodes() {
   rows.replaceChildren();
 
   if (!selectedCodes.length) {
-    rows.appendChild(emptyRow(3, 'No codes match this view.'));
+    rows.appendChild(emptyRow(4, 'No codes match this view.'));
+    el('code-select-all').checked = false;
+    el('code-select-all').disabled = true;
+    updatePrintButton();
     return;
   }
 
+  const printable = selectedCodes.filter((c) => !c.used_at);
+  el('code-select-all').disabled = printable.length === 0;
+  el('code-select-all').checked = printable.length > 0 && printable.every((c) => picked.has(c.code));
+
   selectedCodes.forEach((code) => {
     const tr = document.createElement('tr');
+
+    const pickCell = document.createElement('td');
+    pickCell.className = 'pick';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.disabled = Boolean(code.used_at);
+    box.checked = !code.used_at && picked.has(code.code);
+    box.setAttribute('aria-label', `Select code ${code.code}`);
+    box.addEventListener('change', () => {
+      if (box.checked) picked.add(code.code);
+      else picked.delete(code.code);
+      updatePrintButton();
+      renderSelectAllState();
+    });
+    pickCell.appendChild(box);
 
     const codeCell = document.createElement('td');
     codeCell.className = 'mono';
@@ -226,9 +275,23 @@ function renderCodes() {
     const usedCell = document.createElement('td');
     usedCell.textContent = code.used_at ? fmtDateTime(code.used_at) : '—';
 
-    tr.append(codeCell, statusCell, usedCell);
+    tr.append(pickCell, codeCell, statusCell, usedCell);
     rows.appendChild(tr);
   });
+
+  updatePrintButton();
+}
+
+function renderSelectAllState() {
+  const printable = selectedCodes.filter((c) => !c.used_at);
+  el('code-select-all').checked = printable.length > 0 && printable.every((c) => picked.has(c.code));
+}
+
+function updatePrintButton() {
+  const button = el('print-selected');
+  const n = picked.size;
+  button.disabled = n === 0;
+  button.textContent = n ? `Print selected (${n})` : 'Print selected';
 }
 
 /* --------------------------------------------------------------- print */
@@ -252,121 +315,247 @@ async function printBatch(batch) {
       return;
     }
 
-    buildSheets(batch, codes, el('layout').value);
-
-    const previousTitle = document.title;
-    document.title = `Coftea ${batch.label} - ${codes.length} codes`;
-    window.addEventListener(
-      'afterprint',
-      () => {
-        document.title = previousTitle;
-        el('print-root').replaceChildren();
-      },
-      { once: true }
-    );
-
-    setTimeout(() => window.print(), 120);
+    printCodes(batch, codes);
   } catch (err) {
     toast(err.message);
   }
 }
 
-function buildSheets(batch, codes, layout) {
-  const perPage = layout === '50' ? 500 : 250;
-  const pages = Math.ceil(codes.length / perPage);
+function printSelected() {
+  if (!selectedBatch || !picked.size) {
+    toast('Pick at least one unused code first.');
+    return;
+  }
+
+  const codes = selectedCodes.filter((c) => picked.has(c.code) && !c.used_at).map((c) => c.code);
+  if (!codes.length) {
+    toast('The selected codes are already used.');
+    return;
+  }
+
+  printCodes(selectedBatch, codes);
+}
+
+function printCodes(batch, codes) {
+  buildSlips(batch, codes, el('receipt-width').value);
+
+  const previousTitle = document.title;
+  document.title = `Coftea ${batch.label} - ${codes.length} codes`;
+  window.addEventListener(
+    'afterprint',
+    () => {
+      document.title = previousTitle;
+      el('print-root').replaceChildren();
+    },
+    { once: true }
+  );
+
+  setTimeout(() => window.print(), 120);
+}
+
+function buildSlips(batch, codes, width) {
   const root = el('print-root');
   root.replaceChildren();
 
-  for (let page = 0; page < pages; page += 1) {
-    const slice = codes.slice(page * perPage, (page + 1) * perPage);
+  codes.forEach((code) => {
+    const slip = document.createElement('article');
+    slip.className = 'pos-slip';
 
-    const sheet = document.createElement('section');
-    sheet.className = 'sheet layout-' + layout;
+    const brand = document.createElement('div');
+    brand.className = 'pos-brand';
+    brand.textContent = 'Coftea Cafe — Ipil';
 
-    const head = document.createElement('div');
-    head.className = 'sheet-head';
+    const caption = document.createElement('div');
+    caption.className = 'pos-caption';
+    caption.textContent = 'LOYALTY CODE';
 
-    const left = document.createElement('span');
-    const title = document.createElement('b');
-    title.textContent = 'Coftea Cafe — Ipil';
-    const meta = document.createElement('span');
-    meta.textContent = `  ${batch.label}  ·  ${batch.id}  ·  expires ${fmtDate(batch.expires_at)}`;
-    left.append(title, meta);
+    const num = document.createElement('div');
+    num.className = 'pos-code';
+    num.textContent = code;
 
-    const right = document.createElement('span');
-    right.textContent = `Page ${page + 1} of ${pages}  ·  ${codes.length} codes  ·  1 code = 1 stamp`;
+    const note = document.createElement('div');
+    note.className = 'pos-note';
+    note.textContent = '1 code = 1 stamp';
 
-    head.append(left, right);
+    const meta = document.createElement('div');
+    meta.className = 'pos-meta';
+    meta.textContent = `${batch.label} · expires ${fmtDate(batch.expires_at)}`;
 
-    const grid = document.createElement('div');
-    grid.className = 'cut-grid';
+    slip.append(brand, caption, num, note, meta);
+    root.appendChild(slip);
+  });
 
-    slice.forEach((code) => {
-      const cell = document.createElement('div');
-      cell.className = 'cut-cell';
+  setPageSize(width);
+}
 
-      const span = document.createElement('span');
-      span.className = 'cut-code';
-      span.textContent = code;
-      cell.appendChild(span);
-
-      if (layout === '25') {
-        const note = document.createElement('span');
-        note.className = 'cut-note';
-        note.textContent = '1 code = 1 stamp';
-        cell.appendChild(note);
-      }
-
-      grid.appendChild(cell);
-    });
-
-    sheet.append(head, grid);
-    root.appendChild(sheet);
+function setPageSize(width) {
+  let style = document.getElementById('pos-page');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'pos-page';
+    document.head.appendChild(style);
   }
+  style.textContent = `@media print { @page { size: ${width}mm 40mm; margin: 0; } #print-root { width: ${width}mm; } .pos-slip { width: ${width}mm; height: 38mm; } }`;
 }
 
 /* --------------------------------------------------------------- cards */
 
-async function lookupCards(query) {
+async function lookupCards(query = '') {
   const rows = el('card-rows');
 
   try {
-    const data = await request(`/admin/cards?q=${encodeURIComponent(query)}`, { auth: token });
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    const data = await request(`/admin/cards?${params}`, { auth: token });
     const cards = data.cards || [];
     rows.replaceChildren();
 
     if (!cards.length) {
-      rows.appendChild(emptyRow(5, 'No cards found.'));
-      return;
+      rows.appendChild(emptyRow(6, query ? 'No cards match that number or card id.' : 'No customer cards yet.'));
+    } else {
+      cards.forEach((card) => {
+        const tr = document.createElement('tr');
+        tr.className = 'clickable';
+        tr.addEventListener('click', () => loadCardDetail(card.id));
+
+        const idCell = document.createElement('td');
+        idCell.className = 'mono';
+        idCell.style.fontSize = '10.5px';
+        idCell.textContent = card.id.slice(0, 10) + '…';
+        idCell.title = card.id;
+
+        const phoneCell = document.createElement('td');
+        phoneCell.textContent = card.phone || '—';
+
+        const stampsCell = document.createElement('td');
+        stampsCell.textContent = `${card.stamps} / 16`;
+
+        const rewardsCell = document.createElement('td');
+        rewardsCell.textContent = String(card.rewards);
+
+        const seenCell = document.createElement('td');
+        seenCell.textContent = fmtDateTime(card.last_seen_at);
+
+        const openCell = document.createElement('td');
+        openCell.className = 'right';
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'mini';
+        open.textContent = 'Open';
+        open.addEventListener('click', (event) => {
+          event.stopPropagation();
+          loadCardDetail(card.id);
+        });
+        openCell.appendChild(open);
+
+        tr.append(idCell, phoneCell, stampsCell, rewardsCell, seenCell, openCell);
+        rows.appendChild(tr);
+      });
     }
 
-    cards.forEach((card) => {
-      const tr = document.createElement('tr');
-
-      const idCell = document.createElement('td');
-      idCell.className = 'mono';
-      idCell.style.fontSize = '10.5px';
-      idCell.textContent = card.id.slice(0, 10) + '…';
-      idCell.title = card.id;
-
-      const phoneCell = document.createElement('td');
-      phoneCell.textContent = card.phone || '—';
-
-      const stampsCell = document.createElement('td');
-      stampsCell.textContent = `${card.stamps} / 16`;
-
-      const rewardsCell = document.createElement('td');
-      rewardsCell.textContent = String(card.rewards);
-
-      const seenCell = document.createElement('td');
-      seenCell.textContent = fmtDateTime(card.last_seen_at);
-
-      tr.append(idCell, phoneCell, stampsCell, rewardsCell, seenCell);
-      rows.appendChild(tr);
-    });
+    el('cards-hint').textContent = data.total > cards.length
+      ? `Showing ${cards.length} of ${data.total} cards, most recent first. Search by phone number or card id to narrow down.`
+      : `Showing ${cards.length} card${cards.length === 1 ? '' : 's'}. Open a card to see its stamps and rewards.`;
   } catch (err) {
     toast(err.message);
   }
+}
+
+async function loadCardDetail(id) {
+  try {
+    const data = await request(`/admin/cards/${encodeURIComponent(id)}`, { auth: token });
+    renderCardDetail(data);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+function renderCardDetail(data) {
+  const card = data.card;
+
+  el('detail-title').textContent = `Card ${card.id.slice(0, 10)}…`;
+  el('detail-sub').textContent =
+    `${card.id} · ${card.phone || 'no recovery phone'} · created ${fmtDateTime(card.created_at)} · ` +
+    `last seen ${fmtDateTime(card.last_seen_at)} · cycle ${card.cycle}`;
+
+  const stats = [
+    ['Stamps', data.stamps.length, 'this cycle'],
+    ['Rewards', data.rewards.length, 'this cycle'],
+    ['Stamps', data.lifetime.stamps, 'lifetime'],
+    ['Rewards', data.lifetime.rewards, 'lifetime'],
+  ];
+  const statWrap = el('detail-stats');
+  statWrap.replaceChildren();
+  stats.forEach(([label, value, tag]) => {
+    const box = document.createElement('div');
+    box.className = 'stat';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const num = document.createElement('b');
+    num.textContent = String(value ?? 0);
+    const note = document.createElement('em');
+    note.className = 'stat-tag';
+    note.textContent = tag;
+    box.append(name, num, note);
+    statWrap.appendChild(box);
+  });
+
+  const filled = new Set(data.stamps.map((s) => s.slot));
+  const slots = el('detail-slots');
+  slots.replaceChildren();
+  for (let slot = 1; slot <= 16; slot += 1) {
+    const chip = document.createElement('span');
+    chip.className = 'slot';
+    if (filled.has(slot)) chip.classList.add('filled');
+    if (slot === 8 || slot === 16) chip.classList.add('milestone');
+    chip.textContent = slot === 8 ? '8 ★' : slot === 16 ? '16 ★' : String(slot);
+    slots.appendChild(chip);
+  }
+
+  const stampRows = el('detail-stamps');
+  stampRows.replaceChildren();
+  if (!data.stamps.length) {
+    stampRows.appendChild(emptyRow(3, 'No stamps in this cycle.'));
+  } else {
+    data.stamps.forEach((stamp) => {
+      const tr = document.createElement('tr');
+      const slotCell = document.createElement('td');
+      slotCell.textContent = String(stamp.slot);
+      const codeCell = document.createElement('td');
+      codeCell.className = 'mono';
+      codeCell.textContent = stamp.code;
+      const timeCell = document.createElement('td');
+      timeCell.textContent = fmtDateTime(stamp.stamped_at);
+      tr.append(slotCell, codeCell, timeCell);
+      stampRows.appendChild(tr);
+    });
+  }
+
+  const rewardRows = el('detail-rewards');
+  rewardRows.replaceChildren();
+  if (!data.rewards.length) {
+    rewardRows.appendChild(emptyRow(2, 'No rewards claimed in this cycle.'));
+  } else {
+    data.rewards.forEach((reward) => {
+      const tr = document.createElement('tr');
+      const nameCell = document.createElement('td');
+      nameCell.textContent = rewardName(reward.milestone);
+      const timeCell = document.createElement('td');
+      timeCell.textContent = fmtDateTime(reward.claimed_at);
+      tr.append(nameCell, timeCell);
+      rewardRows.appendChild(tr);
+    });
+  }
+
+  const panel = el('card-detail');
+  panel.hidden = false;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function rewardName(milestone) {
+  if (Number(milestone) === 8) return 'Free Upsize';
+  if (Number(milestone) === 16) return 'Free Drink';
+  return 'Reward';
 }
 
 /* ------------------------------------------------------------- helpers */
@@ -384,6 +573,16 @@ function emptyRow(cols, message) {
 function fmtDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function fmtDay(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(`${dateStr}T12:00:00+08:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 function fmtDateTime(iso) {
@@ -472,10 +671,75 @@ el('code-search').addEventListener('input', () => {
 });
 el('code-status').addEventListener('change', loadCodes);
 
+el('code-select-all').addEventListener('change', (event) => {
+  picked.clear();
+  if (event.target.checked) {
+    selectedCodes.filter((c) => !c.used_at).forEach((c) => picked.add(c.code));
+  }
+  renderCodes();
+});
+
+el('print-selected').addEventListener('click', printSelected);
+
+el('stats-date').addEventListener('change', () => loadStats().catch((err) => toast(err.message)));
+
+el('day-prev').addEventListener('click', () => shiftDay(-1));
+el('day-next').addEventListener('click', () => shiftDay(1));
+el('day-today').addEventListener('click', () => {
+  el('stats-date').value = cafeToday();
+  loadStats().catch((err) => toast(err.message));
+});
+
+function shiftDay(delta) {
+  const current = el('stats-date').value || cafeToday();
+  const d = new Date(`${current}T12:00:00+08:00`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  el('stats-date').value = new Date(d.getTime() + 8 * 3600000).toISOString().slice(0, 10);
+  loadStats().catch((err) => toast(err.message));
+}
+
 el('card-form').addEventListener('submit', (event) => {
   event.preventDefault();
   lookupCards(el('card-query').value.trim());
 });
+
+el('card-query').addEventListener('input', () => {
+  clearTimeout(cardsTimer);
+  cardsTimer = setTimeout(() => lookupCards(el('card-query').value.trim()), 300);
+});
+
+el('detail-close').addEventListener('click', () => {
+  el('card-detail').hidden = true;
+});
+
+el('clear-unused').addEventListener('click', () => resetCodes('unused'));
+el('clear-all').addEventListener('click', () => resetCodes('all'));
+
+async function resetCodes(mode) {
+  const first =
+    mode === 'all'
+      ? 'Delete EVERY code and every batch? Used code history will be gone. Cards and stamps stay.'
+      : 'Delete all unused codes? Batches with no used codes will be removed too.';
+  if (!confirm(first)) return;
+
+  const word = mode === 'all' ? 'DELETE' : 'RESET';
+  const typed = prompt(`Type ${word} to confirm.`);
+  if (typed !== word) {
+    toast('Cancelled — nothing was deleted.');
+    return;
+  }
+
+  try {
+    const result = await request('/admin/codes/reset', { method: 'POST', auth: token, body: { mode } });
+    toast(`Deleted ${result.deleted_codes} codes and ${result.deleted_batches} batches.`);
+
+    el('card-detail').hidden = true;
+    await Promise.all([loadStats(), loadBatches(), lookupCards(el('card-query').value.trim())]);
+  } catch (err) {
+    if (err.status === 401) signOut(false);
+    else toast(err.message);
+  }
+}
 
 /* ---------------------------------------------------------------- boot */
 

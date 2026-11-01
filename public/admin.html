@@ -32,7 +32,7 @@
       <div class="panel-head" style="margin-bottom:8px">
         <div>
           <h2>Staff sign-in</h2>
-          <p class="hint">Enter the admin token to generate codes and print sheets.</p>
+          <p class="hint">Enter the admin token to generate codes and print slips.</p>
         </div>
       </div>
       <form id="gate-form" novalidate>
@@ -50,7 +50,13 @@
         <div class="panel-head">
           <div>
             <h2>Overview</h2>
-            <p class="hint">One code is burned per stamp. 16 stamps make one complete card.</p>
+            <p class="hint" id="stats-scope">Daily summary. Codes and unused stock are all-time totals.</p>
+          </div>
+          <div class="daypick">
+            <button class="mini" type="button" id="day-prev" aria-label="Previous day">‹</button>
+            <input class="input" id="stats-date" type="date">
+            <button class="mini" type="button" id="day-next" aria-label="Next day">›</button>
+            <button class="mini" type="button" id="day-today">Today</button>
           </div>
         </div>
         <div class="grid-stats" id="stats"></div>
@@ -85,14 +91,14 @@
         <div class="panel-head">
           <div>
             <h2>Batches &amp; printing</h2>
-            <p class="hint">Print a batch, cut the slips, hand one per drink.</p>
+            <p class="hint">Print slips the size of a POS receipt, one code per slip, then hand one per drink.</p>
           </div>
           <div class="row" style="gap:14px">
             <label class="field" style="flex:0 0 auto">
-              <span class="label">Sheet layout</span>
-              <select class="input" id="layout">
-                <option value="50" selected>10 × 50 — 500 per A4 page</option>
-                <option value="25">10 × 25 — 250 per A4 page</option>
+              <span class="label">Receipt width</span>
+              <select class="input" id="receipt-width">
+                <option value="58" selected>58 mm — small POS</option>
+                <option value="80">80 mm — standard POS</option>
               </select>
             </label>
             <label class="checkline" style="padding-bottom:0">
@@ -115,7 +121,7 @@
             <tbody id="batch-rows"></tbody>
           </table>
         </div>
-        <p class="note">Printing uses your browser's print dialog. Choose A4, 100% scale, no headers or footers.</p>
+        <p class="note" id="print-note">Printing uses your browser's print dialog. Pick your receipt printer, 100% scale, no margins or headers.</p>
       </section>
 
       <section class="panel">
@@ -131,12 +137,14 @@
               <option value="unused">Unused</option>
               <option value="used">Used</option>
             </select>
+            <button class="mini primary" type="button" id="print-selected" disabled>Print selected</button>
           </div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th class="pick"><input type="checkbox" id="code-select-all" aria-label="Select all unused codes"></th>
                 <th>Code</th>
                 <th>Status</th>
                 <th>Redeemed at</th>
@@ -151,7 +159,7 @@
         <div class="panel-head">
           <div>
             <h2>Find a customer's card</h2>
-            <p class="hint">Search by the recovery phone number, or by a card id a customer shows you.</p>
+            <p class="hint" id="cards-hint">Recent cards are shown first. Search by recovery phone number or card id, then open a card for its stamp and reward history.</p>
           </div>
         </div>
         <form id="card-form" class="row" novalidate>
@@ -170,10 +178,60 @@
                 <th>Stamps</th>
                 <th>Rewards</th>
                 <th>Last seen</th>
+                <th class="right"></th>
               </tr>
             </thead>
             <tbody id="card-rows"></tbody>
           </table>
+        </div>
+
+        <div class="card-detail" id="card-detail" hidden>
+          <div class="panel-head" style="margin-top:22px">
+            <div>
+              <h2 id="detail-title">Card</h2>
+              <p class="hint" id="detail-sub"></p>
+            </div>
+            <button class="mini" type="button" id="detail-close">Close</button>
+          </div>
+          <div class="grid-stats" id="detail-stats"></div>
+          <div class="slot-strip" id="detail-slots" aria-label="Stamp slots"></div>
+          <div class="split">
+            <div>
+              <h3 class="subhead">Stamps this cycle</h3>
+              <div class="table-wrap" style="max-height:260px">
+                <table>
+                  <thead>
+                    <tr><th>Slot</th><th>Code</th><th>Stamped at</th></tr>
+                  </thead>
+                  <tbody id="detail-stamps"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 class="subhead">Rewards this cycle</h3>
+              <div class="table-wrap" style="max-height:260px">
+                <table>
+                  <thead>
+                    <tr><th>Reward</th><th>Claimed at</th></tr>
+                  </thead>
+                  <tbody id="detail-rewards"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel danger">
+        <div class="panel-head">
+          <div>
+            <h2>Reset codes</h2>
+            <p class="hint">Clearing unused codes zeroes the unused stock. Deleting every code also removes used history and all batches. Cards and stamps are never touched.</p>
+          </div>
+        </div>
+        <div class="row">
+          <button class="mini" type="button" id="clear-unused">Delete unused codes</button>
+          <button class="mini danger" type="button" id="clear-all">Delete every code</button>
         </div>
       </section>
     </div>
