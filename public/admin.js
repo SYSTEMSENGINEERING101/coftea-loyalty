@@ -7,6 +7,7 @@ let batches = [];
 let selectedBatch = null;
 let selectedCodes = [];
 let picked = new Set();
+let printQty = 1;
 let toastTimer = null;
 let searchTimer = null;
 let cardsTimer = null;
@@ -368,6 +369,8 @@ async function loadBatches() {
     printBtn.type = 'button';
     printBtn.className = 'mini primary';
     printBtn.textContent = 'Print';
+    printBtn.dataset.unused = String(unused);
+    printBtn.dataset.total = String(batch.total);
     printBtn.addEventListener('click', () => printBatch(batch));
 
     const viewBtn = document.createElement('button');
@@ -395,6 +398,8 @@ async function loadBatches() {
   } else if (!selectedBatch) {
     await selectBatch(batches[0]);
   }
+
+  syncQtyControl();
 }
 
 /* --------------------------------------------------------------- codes */
@@ -490,6 +495,85 @@ function updatePrintButton() {
 
 /* --------------------------------------------------------------- print */
 
+function qtyMax() {
+  const includeUsed = el('include-used').checked;
+  let max = 1;
+  batches.forEach((batch) => {
+    const available = includeUsed ? Number(batch.total) : Number(batch.total) - Number(batch.used);
+    max = Math.max(max, available);
+  });
+  return max;
+}
+
+function setQty(value, { write = true } = {}) {
+  const max = qtyMax();
+  const next = Math.min(Math.max(1, Math.trunc(Number(value) || 1)), max);
+  printQty = next;
+
+  const input = el('qty-value');
+  input.max = String(max);
+  if (write) input.value = String(next);
+
+  el('qty-minus').disabled = next <= 1;
+  el('qty-plus').disabled = next >= max;
+
+  document.querySelectorAll('#qty-list .qtyitem').forEach((item) => {
+    const on = Number(item.dataset.n) === next;
+    item.classList.toggle('on', on);
+    item.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+
+  updatePrintLabels();
+}
+
+function buildQtyList() {
+  const list = el('qty-list');
+  list.replaceChildren();
+
+  for (let n = 1; n <= qtyMax(); n += 1) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'qtyitem';
+    item.dataset.n = String(n);
+    item.setAttribute('role', 'option');
+    item.textContent = String(n);
+    item.addEventListener('click', () => {
+      setQty(n);
+      closeQty();
+    });
+    list.appendChild(item);
+  }
+
+  setQty(printQty);
+}
+
+function syncQtyControl() {
+  buildQtyList();
+}
+
+function updatePrintLabels() {
+  const includeUsed = el('include-used').checked;
+  document.querySelectorAll('#batch-rows .mini.primary').forEach((button) => {
+    const available = Number((includeUsed ? button.dataset.total : button.dataset.unused) || 0);
+    button.textContent = `Print ${Math.min(printQty, Math.max(1, available))}`;
+  });
+}
+
+function openQty() {
+  buildQtyList();
+  el('qty-pop').hidden = false;
+  el('qty-toggle').setAttribute('aria-expanded', 'true');
+
+  const list = el('qty-list');
+  const selected = list.querySelector('.qtyitem.on');
+  if (selected) list.scrollTop = selected.offsetTop - list.clientHeight / 2 + selected.offsetHeight / 2;
+}
+
+function closeQty() {
+  el('qty-pop').hidden = true;
+  el('qty-toggle').setAttribute('aria-expanded', 'false');
+}
+
 async function printBatch(batch) {
   try {
     const expired = new Date(batch.expires_at).getTime() < Date.now();
@@ -509,7 +593,13 @@ async function printBatch(batch) {
       return;
     }
 
-    printCodes(batch, codes);
+    const wanted = printQty;
+    const qty = Math.min(wanted, codes.length);
+    if (qty < wanted) {
+      toast(`This batch only has ${codes.length} printable code${codes.length === 1 ? '' : 's'} — printing ${qty}.`);
+    }
+
+    printCodes(batch, codes.slice(0, qty));
   } catch (err) {
     toast(err.message);
   }
@@ -882,6 +972,30 @@ el('code-select-all').addEventListener('change', (event) => {
 
 el('print-selected').addEventListener('click', printSelected);
 
+el('qty-minus').addEventListener('click', () => setQty(printQty - 1));
+el('qty-plus').addEventListener('click', () => setQty(printQty + 1));
+
+el('qty-toggle').addEventListener('click', () => {
+  if (el('qty-pop').hidden) openQty();
+  else closeQty();
+});
+
+el('qty-value').addEventListener('input', () => {
+  if (el('qty-value').value === '') return;
+  setQty(el('qty-value').value, { write: false });
+});
+
+el('qty-value').addEventListener('blur', () => setQty(el('qty-value').value));
+
+el('qty-value').addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  setQty(el('qty-value').value);
+  closeQty();
+});
+
+el('include-used').addEventListener('change', () => buildQtyList());
+
 el('range-btn').addEventListener('click', () => {
   if (el('range-pop').hidden) openRange();
   else closeRange();
@@ -905,12 +1019,15 @@ document.querySelectorAll('.quicklist [data-preset]').forEach((button) => {
 });
 
 document.addEventListener('click', (event) => {
-  if (el('range-pop').hidden) return;
-  if (!event.target.closest('.rangepick')) closeRange();
+  if (!el('range-pop').hidden && !event.target.closest('.rangepick')) closeRange();
+  if (!el('qty-pop').hidden && !event.target.closest('.qtypick')) closeQty();
 });
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') closeRange();
+  if (event.key === 'Escape') {
+    closeRange();
+    closeQty();
+  }
 });
 
 el('card-form').addEventListener('submit', (event) => {

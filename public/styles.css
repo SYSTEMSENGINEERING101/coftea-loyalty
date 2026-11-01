@@ -1259,6 +1259,162 @@ tr.clickable:hover td {
   height: 14px;
 }
 
+/* Quantity picker used by batch printing */
+
+.qtypick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.qtypick:focus-within {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(21, 19, 17, 0.07);
+}
+
+.qtystep {
+  width: 32px;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+.qtystep:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.qtystep:hover:not(:disabled) {
+  background: var(--shell);
+  color: var(--ink);
+}
+
+.qtystep:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.qtyinput {
+  width: 40px;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: center;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.qtyinput::-webkit-outer-spin-button,
+.qtyinput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.qtychev {
+  width: 32px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0 999px 999px 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+.qtychev:hover {
+  background: var(--shell);
+  color: var(--ink);
+}
+
+.qtychev svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+
+.qtychev[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.qtypop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 45;
+  width: 156px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 50px -24px rgba(21, 19, 17, 0.45), 0 6px 16px -10px rgba(21, 19, 17, 0.3);
+}
+
+.qtypop-title {
+  margin: 2px 4px 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qtylist {
+  display: grid;
+  gap: 1px;
+  max-height: 224px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.qtyitem {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qtyitem:hover {
+  background: var(--shell);
+  color: var(--ink);
+}
+
+.qtyitem.on {
+  background: var(--ink);
+  color: #fff;
+}
+
 .table-wrap {
   overflow: auto;
   max-height: 440px;
