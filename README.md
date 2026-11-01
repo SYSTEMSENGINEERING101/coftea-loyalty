@@ -208,3 +208,5 @@ Do this monthly and after every new batch. On Windows PowerShell, use `"backups/
 | Every code says invalid | the code's batch expired, or you are testing against a different database than the one that generated them |
 | Print sheet is blank | print from the browser dialog after the sheet builds; check that "background graphics" is irrelevant (borders are real borders) |
 | Code refuses to stamp | slot order: the card only accepts the next slot in sequence |
+#   c o f t e a - l o y a l t y  
+ 
