@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Coftea Cafe — Loyalty Card</title>
+  <meta name="description" content="Coftea Cafe - Ipil virtual loyalty card. Collect 16 stamps, earn a free upsize and a free drink.">
+  <meta name="theme-color" content="#151311">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap app-shell">
+    <header class="top">
+      <div class="brand">
+        <a class="mark" href="/" aria-label="Coftea Cafe home">C</a>
+        <div>
+          <p class="brand-name">Coftea Cafe — Ipil</p>
+          <p class="brand-sub">Virtual loyalty card</p>
+        </div>
+      </div>
+      <a class="ghost-link" href="/admin.html">Staff</a>
+    </header>
+
+    <section class="card" id="card" aria-busy="true" aria-labelledby="card-title">
+      <div class="card-head">
+        <span class="eyebrow">Loyalty program</span>
+        <h1 class="card-title" id="card-title">Coftea Cafe — Ipil</h1>
+        <p class="card-sub">Collect stamps &amp; unlock rewards</p>
+      </div>
+
+      <div class="slots" id="slots" role="list" aria-label="Loyalty card, 16 slots"></div>
+
+      <div class="rewards" id="rewards" hidden></div>
+
+      <div class="card-foot">
+        <button class="btn-quiet" id="how-btn" type="button">How it works</button>
+        <button class="btn btn-outline btn-sm" id="reset-btn" type="button" hidden>Reset all slots?</button>
+        <p class="progress" id="progress" aria-live="polite">— / 16 stamps</p>
+      </div>
+    </section>
+
+    <p class="fine" id="fine" hidden>
+      <span id="fine-text">This card is saved on this device.</span>
+      <button class="link" id="phone-btn" type="button">Add a phone number for recovery</button>
+    </p>
+  </main>
+
+  <!-- code entry -->
+  <dialog id="code-dialog" aria-labelledby="code-title">
+    <form class="dlg-body" id="code-form" novalidate>
+      <p class="dlg-kicker">Stamp slot <span id="code-slot">1</span></p>
+      <h2 class="dlg-title" id="code-title">Enter your 7-digit code</h2>
+      <p class="dlg-sub">The barista gives you one code with every drink.</p>
+      <input class="code-input" id="code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7"
+             autocomplete="one-time-code" placeholder="0000000" aria-label="7-digit code" required>
+      <p class="err" id="code-error" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button class="btn btn-block" id="code-submit" type="submit">Validate &amp; stamp</button>
+        <button class="btn-quiet" type="button" data-close>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- reward claim -->
+  <dialog id="reward-dialog" aria-labelledby="reward-title">
+    <div class="dlg-body">
+      <p class="dlg-kicker">Reward unlocked</p>
+      <h2 class="dlg-title" id="reward-title">Free upsize</h2>
+      <p class="dlg-sub" id="reward-sub">Show this screen to staff. They will tap the button once it is handed over.</p>
+      <div class="dlg-actions">
+        <button class="btn btn-block" id="reward-claim" type="button">Mark as redeemed</button>
+        <button class="btn-quiet" type="button" data-close>Not yet</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- reset -->
+  <dialog id="reset-dialog" aria-labelledby="reset-title">
+    <div class="dlg-body">
+      <p class="dlg-kicker">Full card</p>
+      <h2 class="dlg-title" id="reset-title">Start a fresh card?</h2>
+      <p class="dlg-sub">Make sure your free drink has been claimed first. Resetting clears all 16 slots so you can collect again.</p>
+      <div class="dlg-actions">
+        <button class="btn btn-block" id="reset-confirm" type="button">Yes, reset the card</button>
+        <button class="btn-quiet" type="button" data-close>Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- tutorial -->
+  <dialog id="how-dialog" aria-labelledby="how-title">
+    <div class="dlg-body">
+      <p class="dlg-kicker">How it works</p>
+      <div class="how-body">
+        <h3 id="how-title">Welcome</h3>
+        <p id="how-text"></p>
+      </div>
+      <div class="how-nav">
+        <div class="dots" id="how-dots" aria-hidden="true"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-quiet" id="how-skip" type="button">Skip</button>
+          <button class="btn btn-sm" id="how-next" type="button">Next</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- recovery -->
+  <dialog id="phone-dialog" aria-labelledby="phone-title">
+    <form class="dlg-body" id="phone-form" novalidate>
+      <p class="dlg-kicker">Card recovery</p>
+      <h2 class="dlg-title" id="phone-title">Keep your card safe</h2>
+      <p class="dlg-sub">Add a phone number so staff can find your card, or copy a private link to open it on another device.</p>
+      <div class="field">
+        <label class="label" for="phone-input">Phone number</label>
+        <input class="input" id="phone-input" type="tel" inputmode="tel" placeholder="+63 9xx xxx xxxx" autocomplete="tel">
+      </div>
+      <p class="err" id="phone-error" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button class="btn btn-block" type="submit">Save number</button>
+        <button class="btn-quiet" id="copy-link" type="button">Copy card link</button>
+        <button class="btn-quiet" type="button" data-close>Not now</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/card.js" type="module"></script>
+</body>
+</html>

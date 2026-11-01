@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Coftea Cafe">
+  <rect width="512" height="512" rx="112" fill="#151311"/>
+  <g fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M352 196h18a52 52 0 0 1 0 104h-18"/>
+    <path d="M148 196h204v116a54 54 0 0 1-54 54h-96a54 54 0 0 1-54-54z"/>
+    <path d="M196 132v34M250 132v34M304 132v34"/>
+  </g>
+</svg>

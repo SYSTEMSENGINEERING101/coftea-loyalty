@@ -1,0 +1,17 @@
+{
+  "name": "coftea-loyalty",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Coftea Cafe - Ipil virtual loyalty stamp card (Cloudflare Pages + D1)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev public --port 8788",
+    "db:migrate": "wrangler d1 migrations apply coftea-loyalty --local",
+    "db:migrate:remote": "wrangler d1 migrations apply coftea-loyalty --remote",
+    "deploy": "wrangler pages deploy public",
+    "test:smoke": "node scripts/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.42.0"
+  }
+}

@@ -1,0 +1,11 @@
+name = "coftea-loyalty"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "public"
+
+# Replace database_id after running:
+#   npx wrangler d1 create coftea-loyalty
+# The placeholder below is enough for local development.
+[[d1_databases]]
+binding = "DB"
+database_name = "coftea-loyalty"
+database_id = "00000000-0000-0000-0000-000000000000"
