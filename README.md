@@ -134,12 +134,12 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 4. Print either:
    - the whole batch — **Print** on the batch row (prints every unused code), or
    - only the slips you need — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-5. Each slip prints on its own receipt page with the café name, the 7-digit code and the expiry. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
+5. Each slip is a compact receipt block — café name, the 7-digit code, the site address and the expiry — about 28 mm tall, one after another with a dashed cut line between them. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
 6. Hand one slip per drink.
 7. Print a QR code pointing at the site root and put it on the counter / table tent.
 8. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
 
-**Daily overview:** the Overview panel shows today's used codes, new cards, stamps and rewards, with a date picker and ‹ › day buttons for previous days. Codes and unused stock are always shown as all-time totals.
+**Daily overview:** the Overview panel defaults to today. Use the calendar chip for presets (Today, Yesterday, This month, This year, Last month) or click two dates for a custom range. Used codes, new cards, stamps and rewards follow the range; codes and unused stock are always all-time totals.
 
 **Find a customer:** the card table lists the 5 most recent cards; search by phone number or card id, then **Open** a card to see every stamp (slot, code, time) and claimed reward for the current cycle, plus lifetime totals.
 
@@ -168,7 +168,7 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 ## 6. Printing notes
 
 - Slips are sized for POS receipt paper: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- Each slip carries only the café name, the code, "1 code = 1 stamp" and the expiry. The batch label and id stay in the admin.
+- Each slip is a small receipt block, roughly 28 mm tall: café name, "Enter your 7-digit code", the code, the one-line rule with the site address, and the batch/expiry footer. Slips are separated by a dashed line and print continuously instead of one page per slip.
 - Printing a batch produces one slip per code; printing a selection produces one slip per ticked code. Hand over exactly the slips you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.

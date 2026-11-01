@@ -241,11 +241,14 @@ function tooManyAttempts() {
 /* ------------------------------------------------------------------ admin */
 
 async function adminStats(env, url) {
-  const date = normalizeDate(url.searchParams.get('date'));
-  const start = new Date(`${date}T00:00:00+08:00`);
-  const end = new Date(start.getTime() + 86400000);
-  const from = start.toISOString();
-  const to = end.toISOString();
+  const today = todayManila();
+  const from = validDate(url.searchParams.get('from')) || validDate(url.searchParams.get('date')) || today;
+  const to = validDate(url.searchParams.get('to')) || from;
+
+  const start = new Date(`${from}T00:00:00+08:00`);
+  const end = new Date(new Date(`${to}T00:00:00+08:00`).getTime() + 86400000);
+  const lower = start.toISOString();
+  const upper = end.toISOString();
 
   const row = await env.DB.prepare(
     `SELECT
@@ -256,15 +259,18 @@ async function adminStats(env, url) {
        (SELECT COUNT(*) FROM stamps WHERE stamped_at >= ? AND stamped_at < ?) AS stamps_day,
        (SELECT COUNT(*) FROM redemptions WHERE claimed_at >= ? AND claimed_at < ?) AS rewards_day`
   )
-    .bind(from, to, from, to, from, to, from, to)
+    .bind(lower, upper, lower, upper, lower, upper, lower, upper)
     .first();
 
-  return json({ ...row, date, timezone: 'Asia/Manila (+08:00)' });
+  return json({ ...row, from, to, timezone: 'Asia/Manila (+08:00)' });
 }
 
-function normalizeDate(value) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return value;
+function todayManila() {
   return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+}
+
+function validDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? value : null;
 }
 
 async function listBatches(env) {

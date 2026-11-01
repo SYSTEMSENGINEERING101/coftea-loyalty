@@ -753,19 +753,58 @@ dialog::backdrop {
   gap: 10px;
 }
 
-@media (min-width: 720px) {
+@media (min-width: 760px) {
   .grid-stats {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 }
 
 .stat {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 14px;
+  background: #fff;
+  min-width: 0;
 }
 
-.stat span {
+#stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.stat-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--shell);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.stat-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stat-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-body span,
+.stat > span:not(.stat-icon) {
   font-size: 8.5px;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -782,9 +821,13 @@ dialog::backdrop {
   line-height: 1;
 }
 
+.stat-body b {
+  margin-top: 1px;
+}
+
 .stat-tag {
   display: block;
-  margin-top: 5px;
+  margin-top: 4px;
   font-size: 8px;
   font-style: normal;
   letter-spacing: 0.08em;
@@ -792,16 +835,274 @@ dialog::backdrop {
   color: var(--muted);
 }
 
-.daypick {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* ------------------------------------------------------------- rangepick */
+
+.rangepick {
+  position: relative;
 }
 
-.daypick .input {
-  width: 148px;
-  padding: 7px 9px;
+.rangebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--sans);
   font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rangebtn:hover {
+  border-color: var(--ink);
+}
+
+.rangebtn[aria-expanded="true"] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(21, 19, 17, 0.07);
+}
+
+.rangebtn .ico,
+.rangebtn .chev {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
+.rangebtn .ico {
+  opacity: 0.7;
+}
+
+.rangebtn .chev {
+  width: 13px;
+  height: 13px;
+  opacity: 0.55;
+  transition: transform 0.15s;
+}
+
+.rangebtn[aria-expanded="true"] .chev {
+  transform: rotate(180deg);
+}
+
+.rangepop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 34px 70px -34px rgba(21, 19, 17, 0.5), 0 8px 20px -14px rgba(21, 19, 17, 0.3);
+}
+
+.quicklist {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding-right: 12px;
+  border-right: 1px solid var(--line);
+  width: 128px;
+  flex: 0 0 auto;
+}
+
+.quicklist button {
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quicklist button:hover {
+  background: var(--shell);
+  color: var(--ink);
+}
+
+.calpane {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.calhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calnav {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink-2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.calnav:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.calmonths {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.calmonth {
+  min-width: 0;
+}
+
+.calmonth-name {
+  margin-bottom: 8px;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.calgrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  justify-items: center;
+}
+
+.caldow {
+  width: 26px;
+  padding: 2px 0 4px;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.calday {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.calday:hover {
+  background: var(--shell);
+  color: var(--ink);
+}
+
+.calday.today {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.calday.inrange {
+  background: var(--shell);
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+.calday.start,
+.calday.end {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calday.start:hover,
+.calday.end:hover {
+  background: var(--ink);
+  color: #fff;
+}
+
+.calfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+#cal-hint {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.calfoot-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .rangepop {
+    left: 0;
+    right: auto;
+    flex-direction: column;
+    gap: 10px;
+    width: min(92vw, 380px);
+    padding: 12px;
+  }
+
+  .quicklist {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    width: auto;
+    padding: 0 0 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .quicklist button {
+    padding: 6px 9px;
+  }
+
+  .calmonths {
+    grid-template-columns: 1fr;
+  }
+
+  .calmonth + .calmonth {
+    display: none;
+  }
 }
 
 .pick {
@@ -1054,47 +1355,62 @@ td.right {
 
 .pos-slip {
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1mm;
-  padding: 3mm 4mm;
+  width: 100%;
+  padding: 2.4mm 2.5mm 2.8mm;
   text-align: center;
   font-family: var(--sans);
   color: #000;
-  overflow: hidden;
+  border-bottom: 1px dashed #000;
 }
 
 .pos-brand {
   font-family: var(--serif);
-  font-size: 10pt;
+  font-size: 9pt;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 .pos-caption {
-  font-size: 6pt;
+  margin-top: 0.3mm;
+  font-size: 5pt;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pos-rule {
+  margin: 1.2mm 0 1mm;
+  border-top: 1px dashed #000;
+}
+
+.pos-label {
+  font-size: 5pt;
+  line-height: 1.2;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .pos-code {
+  margin: 0.3mm 0 0.5mm;
   font-family: var(--mono);
-  font-size: 21pt;
+  font-size: 17pt;
   font-weight: 700;
   letter-spacing: 0.08em;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .pos-note {
-  font-size: 6.5pt;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 5.5pt;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
 }
 
 .pos-meta {
-  font-size: 5.5pt;
-  color: #555;
+  margin-top: 0.5mm;
+  font-size: 4.6pt;
+  line-height: 1.25;
+  color: #444;
 }
 
 @media print {
@@ -1109,15 +1425,18 @@ td.right {
 
   #print-root {
     display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   .pos-slip {
-    page-break-after: always;
-    break-after: page;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .pos-slip:last-child {
-    page-break-after: auto;
-    break-after: auto;
+    border-bottom: 0;
+    padding-bottom: 1mm;
   }
 }

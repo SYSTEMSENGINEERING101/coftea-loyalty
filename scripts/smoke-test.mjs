@@ -135,13 +135,25 @@ check(
 
 // 8. daily stats
 const stats = await call('/admin/stats', { token: TOKEN });
-check('stats report a daily date', /^\d{4}-\d{2}-\d{2}$/.test(stats.data.date || ''), stats.data.date);
+check(
+  'stats default to a single day',
+  stats.status === 200 &&
+    stats.data.from === stats.data.to &&
+    /^\d{4}-\d{2}-\d{2}$/.test(stats.data.from || ''),
+  `${stats.data.from}..${stats.data.to}`
+);
 check('stats count today\'s burned codes', Number(stats.data.codes_used) >= 16, `used ${stats.data.codes_used}`);
 check('stats count today\'s rewards', Number(stats.data.rewards_day) >= 2, `rewards ${stats.data.rewards_day}`);
 check('stats keep unused stock as an all-time total', Number(stats.data.codes_unused) >= 3, `unused ${stats.data.codes_unused}`);
 
 const oldDay = await call('/admin/stats?date=2000-01-01', { token: TOKEN });
 check('an empty day reports zero activity', Number(oldDay.data.stamps_day) === 0 && Number(oldDay.data.codes_used) === 0);
+
+const rangeStats = await call('/admin/stats?from=2000-01-01&to=2000-01-02', { token: TOKEN });
+check(
+  'a date range is accepted',
+  rangeStats.status === 200 && rangeStats.data.from === '2000-01-01' && rangeStats.data.to === '2000-01-02'
+);
 
 // 9. reset codes
 const clearUnused = await call('/admin/codes/reset', { method: 'POST', token: TOKEN, body: { mode: 'unused' } });

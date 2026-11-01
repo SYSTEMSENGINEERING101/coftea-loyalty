@@ -74,8 +74,6 @@ async function showApp() {
   el('app').hidden = false;
   el('sign-out').hidden = false;
 
-  if (!el('stats-date').value) el('stats-date').value = cafeToday();
-
   try {
     await Promise.all([loadStats(), loadBatches(), lookupCards('')]);
   } catch (err) {
@@ -84,28 +82,51 @@ async function showApp() {
   }
 }
 
-function cafeToday() {
-  return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-}
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+let range = { from: todayIso(), to: todayIso() };
+let calAnchor = monthStart(range.from);
+let draft = null;
+
+const ICONS = {
+  codes:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6Z"></path><path d="M13 5v14"></path></svg>',
+  unused:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>',
+  used:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 12h7"></path></svg>',
+  cards:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M3.5 20c.6-3.4 2.8-5 5.5-5s4.9 1.6 5.5 5"></path><path d="M17 8h4M19 6v4"></path></svg>',
+  stamps:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14"></path><path d="M6.5 16.5h11V14a2 2 0 0 1-1.5-1.9c0-1.2.7-1.8.7-3.2a4.7 4.7 0 0 0-9.4 0c0 1.4.7 2 .7 3.2A2 2 0 0 1 6.5 14Z"></path></svg>',
+  rewards:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1.5"></rect><path d="M3 10h18v3H3zM12 10v10"></path><path d="M12 10c-1.5-4-5-5-5-2.5S10 10 12 10Zm0 0c1.5-4 5-5 5-2.5S14 10 12 10Z"></path></svg>',
+};
 
 async function loadStats() {
-  const date = el('stats-date').value || cafeToday();
-  const data = await request(`/admin/stats?date=${encodeURIComponent(date)}`, { auth: token });
+  const params = new URLSearchParams({ from: range.from, to: range.to });
+  const data = await request(`/admin/stats?${params}`, { auth: token });
 
   const items = [
-    ['Codes', data.codes_total, 'all time'],
-    ['Unused', data.codes_unused, 'all time'],
-    ['Used', data.codes_used, 'that day'],
-    ['New cards', data.cards_new, 'that day'],
-    ['Stamps', data.stamps_day, 'that day'],
-    ['Rewards', data.rewards_day, 'that day'],
+    ['codes', 'Codes', data.codes_total, 'all time'],
+    ['unused', 'Unused', data.codes_unused, 'all time'],
+    ['used', 'Used', data.codes_used, 'in range'],
+    ['cards', 'New cards', data.cards_new, 'in range'],
+    ['stamps', 'Stamps', data.stamps_day, 'in range'],
+    ['rewards', 'Rewards', data.rewards_day, 'in range'],
   ];
 
   const wrap = el('stats');
   wrap.replaceChildren();
-  items.forEach(([label, value, tag]) => {
+  items.forEach(([key, label, value, tag]) => {
     const box = document.createElement('div');
     box.className = 'stat';
+
+    const icon = document.createElement('span');
+    icon.className = 'stat-icon';
+    icon.innerHTML = ICONS[key];
+
+    const body = document.createElement('div');
+    body.className = 'stat-body';
     const name = document.createElement('span');
     name.textContent = label;
     const num = document.createElement('b');
@@ -113,11 +134,180 @@ async function loadStats() {
     const note = document.createElement('em');
     note.className = 'stat-tag';
     note.textContent = tag;
-    box.append(name, num, note);
+    body.append(name, num, note);
+
+    box.append(icon, body);
     wrap.appendChild(box);
   });
 
-  el('stats-scope').textContent = `Daily summary for ${fmtDay(date)}. Used, new cards, stamps and rewards cover that day; codes and unused stock are all-time.`;
+  updateRangeButton();
+  el('stats-scope').textContent = `Showing ${rangeText(range.from, range.to)}. Used, new cards, stamps and rewards cover that period; codes and unused stock are all-time.`;
+}
+
+function todayIso() {
+  return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+}
+
+function parts(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return { y, m, d };
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function addDaysIso(dateStr, days) {
+  return new Date(new Date(`${dateStr}T12:00:00+08:00`).getTime() + days * 86400000 + 8 * 3600000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function monthStart(dateStr) {
+  return dateStr.slice(0, 8) + '01';
+}
+
+function addMonthsIso(dateStr, months) {
+  const { y, m } = parts(dateStr);
+  const index = y * 12 + (m - 1) + months;
+  return `${Math.floor(index / 12)}-${pad2((index % 12) + 1)}-01`;
+}
+
+function monthEndIso(dateStr) {
+  const { y, m } = parts(dateStr);
+  return `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+}
+
+function fmtDayShort(dateStr) {
+  const { y, m, d } = parts(dateStr);
+  return `${MONTH_NAMES[m - 1]} ${d}, ${y}`;
+}
+
+function rangeText(from, to) {
+  if (!to || to === from) return fmtDayShort(from);
+  const a = parts(from);
+  const b = parts(to);
+  if (a.y === b.y && a.m === b.m) return `${MONTH_NAMES[a.m - 1]} ${a.d} – ${b.d}, ${a.y}`;
+  if (a.y === b.y) return `${MONTH_NAMES[a.m - 1]} ${a.d} – ${MONTH_NAMES[b.m - 1]} ${b.d}, ${a.y}`;
+  return `${fmtDayShort(from)} – ${fmtDayShort(to)}`;
+}
+
+function updateRangeButton() {
+  const today = todayIso();
+  let label = rangeText(range.from, range.to);
+  if (range.from === today && range.to === today) label = `Today, ${MONTH_NAMES[parts(today).m - 1]} ${parts(today).d}`;
+  else if (range.from === addDaysIso(today, -1) && range.to === range.from) {
+    label = `Yesterday, ${MONTH_NAMES[parts(range.from).m - 1]} ${parts(range.from).d}`;
+  }
+  el('range-label').textContent = label;
+}
+
+function openRange() {
+  draft = { start: range.from, end: range.to };
+  calAnchor = monthStart(range.from);
+  renderCalendar();
+  el('range-pop').hidden = false;
+  el('range-btn').setAttribute('aria-expanded', 'true');
+}
+
+function closeRange() {
+  el('range-pop').hidden = true;
+  el('range-btn').setAttribute('aria-expanded', 'false');
+}
+
+function pickDay(date) {
+  if (!draft || (draft.start && draft.end)) draft = { start: date, end: null };
+  else if (date < draft.start) draft = { start: date, end: draft.start };
+  else draft.end = date;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const wrap = el('cal-months');
+  wrap.replaceChildren();
+  const today = todayIso();
+
+  [calAnchor, addMonthsIso(calAnchor, 1)].forEach((first) => {
+    const block = document.createElement('div');
+    block.className = 'calmonth';
+
+    const title = document.createElement('div');
+    title.className = 'calmonth-name';
+    const { y, m } = parts(first);
+    title.textContent = `${MONTH_NAMES[m - 1]} ${y}`;
+
+    const grid = document.createElement('div');
+    grid.className = 'calgrid';
+    ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach((name) => {
+      const dow = document.createElement('span');
+      dow.className = 'caldow';
+      dow.textContent = name;
+      grid.appendChild(dow);
+    });
+
+    const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;
+    for (let i = 0; i < lead; i += 1) grid.appendChild(document.createElement('span'));
+
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    for (let d = 1; d <= days; d += 1) {
+      const date = `${y}-${pad2(m)}-${pad2(d)}`;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'calday';
+      button.textContent = String(d);
+      button.dataset.date = date;
+      if (date === today) button.classList.add('today');
+      if (draft && draft.start && date === draft.start) button.classList.add('start');
+      if (draft && draft.end && date === draft.end) button.classList.add('end');
+      if (draft && draft.start && draft.end && date > draft.start && date < draft.end) {
+        button.classList.add('inrange');
+      }
+      button.addEventListener('click', () => pickDay(date));
+      grid.appendChild(button);
+    }
+
+    block.append(title, grid);
+    wrap.appendChild(block);
+  });
+
+  el('cal-apply').disabled = !draft || !draft.start;
+  el('cal-hint').textContent = !draft || !draft.start
+    ? 'Pick a start date'
+    : !draft.end
+      ? 'Pick an end date, or apply for one day'
+      : rangeText(draft.start, draft.end);
+}
+
+function applyRange() {
+  if (!draft || !draft.start) return;
+  const end = draft.end || draft.start;
+  range = { from: draft.start, to: end };
+  closeRange();
+  loadStats().catch((err) => toast(err.message));
+}
+
+function applyPreset(name) {
+  const today = todayIso();
+  let from = today;
+  let to = today;
+
+  if (name === 'yesterday') {
+    from = addDaysIso(today, -1);
+    to = from;
+  } else if (name === 'month') {
+    from = monthStart(today);
+    to = today;
+  } else if (name === 'year') {
+    from = today.slice(0, 4) + '-01-01';
+    to = today;
+  } else if (name === 'lastmonth') {
+    from = addMonthsIso(monthStart(today), -1);
+    to = monthEndIso(from);
+  }
+
+  range = { from, to };
+  closeRange();
+  loadStats().catch((err) => toast(err.message));
 }
 
 async function loadBatches() {
@@ -367,7 +557,14 @@ function buildSlips(batch, codes, width) {
 
     const caption = document.createElement('div');
     caption.className = 'pos-caption';
-    caption.textContent = 'LOYALTY CODE';
+    caption.textContent = 'Virtual loyalty card';
+
+    const rule = document.createElement('div');
+    rule.className = 'pos-rule';
+
+    const label = document.createElement('div');
+    label.className = 'pos-label';
+    label.textContent = 'Enter your 7-digit code';
 
     const num = document.createElement('div');
     num.className = 'pos-code';
@@ -375,13 +572,13 @@ function buildSlips(batch, codes, width) {
 
     const note = document.createElement('div');
     note.className = 'pos-note';
-    note.textContent = '1 code = 1 stamp';
+    note.textContent = '1 code = 1 stamp · coftea-loyalty.pages.dev';
 
     const meta = document.createElement('div');
     meta.className = 'pos-meta';
     meta.textContent = `${batch.label} · expires ${fmtDate(batch.expires_at)}`;
 
-    slip.append(brand, caption, num, note, meta);
+    slip.append(brand, caption, rule, label, num, note, meta);
     root.appendChild(slip);
   });
 
@@ -395,7 +592,7 @@ function setPageSize(width) {
     style.id = 'pos-page';
     document.head.appendChild(style);
   }
-  style.textContent = `@media print { @page { size: ${width}mm 40mm; margin: 0; } #print-root { width: ${width}mm; } .pos-slip { width: ${width}mm; height: 38mm; } }`;
+  style.textContent = `@media print { @page { size: ${width}mm auto; margin: 0; } #print-root { width: ${width}mm; } }`;
 }
 
 /* --------------------------------------------------------------- cards */
@@ -681,22 +878,36 @@ el('code-select-all').addEventListener('change', (event) => {
 
 el('print-selected').addEventListener('click', printSelected);
 
-el('stats-date').addEventListener('change', () => loadStats().catch((err) => toast(err.message)));
-
-el('day-prev').addEventListener('click', () => shiftDay(-1));
-el('day-next').addEventListener('click', () => shiftDay(1));
-el('day-today').addEventListener('click', () => {
-  el('stats-date').value = cafeToday();
-  loadStats().catch((err) => toast(err.message));
+el('range-btn').addEventListener('click', () => {
+  if (el('range-pop').hidden) openRange();
+  else closeRange();
 });
 
-function shiftDay(delta) {
-  const current = el('stats-date').value || cafeToday();
-  const d = new Date(`${current}T12:00:00+08:00`);
-  d.setUTCDate(d.getUTCDate() + delta);
-  el('stats-date').value = new Date(d.getTime() + 8 * 3600000).toISOString().slice(0, 10);
-  loadStats().catch((err) => toast(err.message));
-}
+el('cal-prev').addEventListener('click', () => {
+  calAnchor = addMonthsIso(calAnchor, -1);
+  renderCalendar();
+});
+
+el('cal-next').addEventListener('click', () => {
+  calAnchor = addMonthsIso(calAnchor, 1);
+  renderCalendar();
+});
+
+el('cal-apply').addEventListener('click', applyRange);
+el('cal-cancel').addEventListener('click', closeRange);
+
+document.querySelectorAll('.quicklist [data-preset]').forEach((button) => {
+  button.addEventListener('click', () => applyPreset(button.dataset.preset));
+});
+
+document.addEventListener('click', (event) => {
+  if (el('range-pop').hidden) return;
+  if (!event.target.closest('.rangepick')) closeRange();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeRange();
+});
 
 el('card-form').addEventListener('submit', (event) => {
   event.preventDefault();
