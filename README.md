@@ -137,10 +137,10 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 3. Pick a **receipt width**: `58 mm` for a small POS printer or `80 mm` for a standard one.
 4. Set **Slips to print** (`1` by default). Type the number or use the `−`/`+` buttons; the arrow opens a scrollable number list up to the batch's available codes.
 5. Print either:
-   - that many slips from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
-   - only specific slips — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-6. Each slip is a compact receipt block — café name, the 7-digit code, the site address and the expiry — about 28 mm tall, one after another with a dashed cut line between them. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
-7. Hand one slip per drink.
+   - that many codes from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
+   - only specific codes — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
+6. Printing is codes only, in a tight grid with dashed cut lines: **4 columns on 58 mm paper, 5 columns on 80 mm**, uniform cells with no blank space between rows. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
+7. Cut the grid into individual codes and hand one per drink.
 8. Print a QR code pointing at the site root and put it on the counter / table tent.
 9. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
 
@@ -189,9 +189,9 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 
 ## 7. Printing notes
 
-- Slips are sized for POS receipt paper: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- Each slip is a small receipt block, roughly 28 mm tall: café name, "Enter your 7-digit code", the code, the one-line rule with the site address, and the batch/expiry footer. Slips are separated by a dashed line and print continuously instead of one page per slip.
-- Printing a batch produces the number of slips chosen in **Slips to print** (one code per slip, default 1); printing a selection produces one slip per ticked code. Hand over exactly the slips you printed.
+- Paper is POS receipt roll: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
+- The printout is codes only — no café name, no instructions, no expiry. Codes sit in a tight grid with dashed cut lines: **4 columns on 58 mm**, **5 columns on 80 mm**, every cell the same height with no gaps between rows.
+- Printing a batch produces the number of codes chosen in **Slips to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.
 - If the browser's print preview shows a full A4 page, check that the printer's paper size is set to the receipt roll (58 mm or 80 mm) rather than A4.

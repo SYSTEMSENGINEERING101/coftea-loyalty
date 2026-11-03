@@ -1599,64 +1599,43 @@ td.right {
   display: none;
 }
 
-.pos-slip {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 2.4mm 2.5mm 2.8mm;
-  text-align: center;
-  font-family: var(--sans);
-  color: #000;
-  border-bottom: 1px dashed #000;
-}
-
-.pos-brand {
-  font-family: var(--serif);
-  font-size: 9pt;
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-.pos-caption {
-  margin-top: 0.3mm;
-  font-size: 5pt;
-  line-height: 1.2;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.pos-rule {
-  margin: 1.2mm 0 1mm;
+.pos-grid {
+  display: grid;
   border-top: 1px dashed #000;
+  border-left: 1px dashed #000;
 }
 
-.pos-label {
-  font-size: 5pt;
-  line-height: 1.2;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.pos-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.pos-cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.pos-cell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8.5mm;
+  padding: 1.4mm 0.3mm;
+  border-right: 1px dashed #000;
+  border-bottom: 1px dashed #000;
+  color: #000;
 }
 
 .pos-code {
-  margin: 0.3mm 0 0.5mm;
   font-family: var(--mono);
-  font-size: 17pt;
+  font-size: 9pt;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.03em;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.pos-note {
-  font-size: 5.5pt;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-}
-
-.pos-meta {
-  margin-top: 0.5mm;
-  font-size: 4.6pt;
-  line-height: 1.25;
-  color: #444;
+.pos-cols-5 .pos-code {
+  font-size: 10pt;
 }
 
 @media print {
@@ -1674,16 +1653,6 @@ td.right {
     width: 100%;
     margin: 0;
     padding: 0;
-  }
-
-  .pos-slip {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .pos-slip:last-child {
-    border-bottom: 0;
-    padding-bottom: 1mm;
   }
 }
 

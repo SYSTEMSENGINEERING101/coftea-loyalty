@@ -689,41 +689,21 @@ function buildSlips(batch, codes, width) {
   const root = el('print-root');
   root.replaceChildren();
 
+  // Codes only, in a tight grid: uniform cells, dashed cut lines, no prose.
+  const grid = document.createElement('div');
+  grid.className = 'pos-grid ' + (Number(width) >= 80 ? 'pos-cols-5' : 'pos-cols-4');
+
   codes.forEach((code) => {
-    const slip = document.createElement('article');
-    slip.className = 'pos-slip';
-
-    const brand = document.createElement('div');
-    brand.className = 'pos-brand';
-    brand.textContent = 'Coftea Cafe — Ipil';
-
-    const caption = document.createElement('div');
-    caption.className = 'pos-caption';
-    caption.textContent = 'Virtual loyalty card';
-
-    const rule = document.createElement('div');
-    rule.className = 'pos-rule';
-
-    const label = document.createElement('div');
-    label.className = 'pos-label';
-    label.textContent = 'Enter your 7-digit code';
-
-    const num = document.createElement('div');
+    const cell = document.createElement('div');
+    cell.className = 'pos-cell';
+    const num = document.createElement('span');
     num.className = 'pos-code';
     num.textContent = code;
-
-    const note = document.createElement('div');
-    note.className = 'pos-note';
-    note.textContent = '1 code = 1 stamp · coftea-loyalty.pages.dev';
-
-    const meta = document.createElement('div');
-    meta.className = 'pos-meta';
-    meta.textContent = `${batch.label} · expires ${fmtDate(batch.expires_at)}`;
-
-    slip.append(brand, caption, rule, label, num, note, meta);
-    root.appendChild(slip);
+    cell.appendChild(num);
+    grid.appendChild(cell);
   });
 
+  root.appendChild(grid);
   setPageSize(width);
 }
 
