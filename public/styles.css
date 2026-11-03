@@ -1686,3 +1686,66 @@ td.right {
     padding-bottom: 1mm;
   }
 }
+
+/* ------------------------------------------------------------- superadmin */
+
+.badge-paused {
+  background: #fdf0ef;
+  color: var(--danger);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(30, 24, 18, 0.45);
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 18px 50px rgba(30, 24, 18, 0.25);
+}
+
+.modal-box h3 {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.token-reveal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: var(--shell);
+}
+
+.token-reveal code {
+  flex: 1;
+  font-size: 13px;
+  word-break: break-all;
+}

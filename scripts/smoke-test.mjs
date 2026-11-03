@@ -3,6 +3,7 @@
 
 const BASE = process.env.BASE || 'http://localhost:8788';
 const TOKEN = process.env.ADMIN_TOKEN || 'coftea-dev-token';
+const SUPER_TOKEN = process.env.SUPERADMIN_TOKEN || 'karungo@2016Pass';
 
 let passed = 0;
 const failures = [];
@@ -167,6 +168,76 @@ check('every code can be deleted', clearAll.status === 200 && clearAll.data.mode
 
 const afterAll = await call('/admin/stats', { token: TOKEN });
 check('codes are zero after a full reset', Number(afterAll.data.codes_total) === 0 && Number(afterAll.data.codes_unused) === 0);
+
+// 10. superadmin + staff tokens
+const migrated = await call('/superadmin/migrate', { method: 'POST', token: SUPER_TOKEN, body: {} });
+check('superadmin prepares the staff table', migrated.status === 200 && migrated.data.migrated === true);
+
+const migratedAgain = await call('/superadmin/migrate', { method: 'POST', token: SUPER_TOKEN, body: {} });
+check('preparing the staff table is idempotent', migratedAgain.status === 200);
+
+const superNoAuth = await call('/superadmin/staff');
+check('superadmin rejects a missing token', superNoAuth.status === 401);
+
+const superBad = await call('/superadmin/staff', { token: 'nope' });
+check('superadmin rejects a wrong token', superBad.status === 401);
+
+const superAsAdmin = await call('/admin/stats', { token: SUPER_TOKEN });
+check('the superadmin token cannot read admin data', superAsAdmin.status === 401, `status ${superAsAdmin.status}`);
+
+const staffAsSuper = await call('/superadmin/staff', { token: TOKEN });
+check('a staff/master token cannot use superadmin', staffAsSuper.status === 401, `status ${staffAsSuper.status}`);
+
+const created = await call('/superadmin/staff', { method: 'POST', token: SUPER_TOKEN, body: { name: 'Smoke tester' } });
+check(
+  'superadmin creates a staff token (shown once)',
+  created.status === 201 && !!created.data.token && created.data.token.startsWith('ct-'),
+  `status ${created.status}`
+);
+const staffId = created.data && created.data.id;
+const staffToken = created.data && created.data.token;
+
+const staffOk = await call('/admin/stats', { token: staffToken });
+check('a staff token opens the dashboard', staffOk.status === 200, `status ${staffOk.status}`);
+
+const wrongStaff = await call('/admin/stats', { token: 'ct-' + '0'.repeat(48) });
+check('a wrong staff token is rejected', wrongStaff.status === 401);
+
+const listed = await call('/superadmin/staff', { token: SUPER_TOKEN });
+check(
+  'the staff list never contains tokens',
+  listed.status === 200 && listed.data.staff.some((s) => s.id === staffId) && listed.data.staff.every((s) => !('token' in s) && !('token_hash' in s))
+);
+
+const paused = await call(`/superadmin/staff/${staffId}/pause`, { method: 'PATCH', token: SUPER_TOKEN, body: {} });
+check('a staff token can be paused', paused.status === 200 && paused.data.status === 'paused');
+
+const pausedDenied = await call('/admin/stats', { token: staffToken });
+check('a paused token is rejected', pausedDenied.status === 401);
+
+const resumed = await call(`/superadmin/staff/${staffId}/resume`, { method: 'PATCH', token: SUPER_TOKEN, body: {} });
+check('a staff token can be resumed', resumed.status === 200 && resumed.data.status === 'active');
+
+const resumedOk = await call('/admin/stats', { token: staffToken });
+check('a resumed token works again', resumedOk.status === 200);
+
+const rotated = await call(`/superadmin/staff/${staffId}/rotate`, { method: 'PATCH', token: SUPER_TOKEN, body: { force: true } });
+check('rotating issues a new token', rotated.status === 200 && !!rotated.data.token && rotated.data.token !== staffToken);
+
+const oldDenied = await call('/admin/stats', { token: staffToken });
+check('the old token dies after rotation', oldDenied.status === 401);
+
+const newOk = await call('/admin/stats', { token: rotated.data.token });
+check('the rotated token works', newOk.status === 200);
+
+const deleted = await call(`/superadmin/staff/${staffId}`, { method: 'DELETE', token: SUPER_TOKEN });
+check('a staff token can be deleted', deleted.status === 200 && deleted.data.deleted === true);
+
+const deletedDenied = await call('/admin/stats', { token: rotated.data.token });
+check('a deleted token is rejected', deletedDenied.status === 401);
+
+const legacy = await call('/admin/stats', { token: TOKEN });
+check('the legacy admin token still works', legacy.status === 200);
 
 console.log(`\n${passed} checks passed, ${failures.length} failed`);
 if (failures.length) {

@@ -10,6 +10,14 @@ const MAX_FAILS_PER_CARD = 8;
 const MAX_FAILS_PER_IP = 40;
 const CODE_RE = /^\d{7}$/;
 
+// SHA-256 of the superadmin token. The plaintext token exists nowhere in this
+// repo; rotate it by replacing this hash (see README, "Superadmin").
+const SUPERADMIN_HASH = '23e34dcd33aae02babf60418694e96f128f7b69dafefb4bf97fc6529efd148cf';
+const SUPER_FAILS_PER_IP = 5;
+const SUPER_FAIL_WINDOW_MS = 10 * 60 * 1000;
+const STAFF_TOKEN_PREFIX = 'ct-';
+const STAFF_TOKEN_BYTES = 24;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -34,8 +42,14 @@ async function handleApi(request, env, url, seg) {
 
     if (seg[0] === 'stamp' && seg.length === 1 && method === 'POST') return stampSlot(request, env);
 
+    if (seg[0] === 'superadmin') {
+      const denied = await requireSuper(request, env);
+      if (denied) return denied;
+      return handleSuperadmin(request, env, seg.slice(1), method);
+    }
+
     if (seg[0] === 'admin') {
-      const denied = requireAdmin(request, env);
+      const denied = await requireStaff(request, env);
       if (denied) return denied;
       if (seg[1] === 'stats' && method === 'GET') return adminStats(env, url);
       if (seg[1] === 'batches' && seg.length === 2 && method === 'GET') return listBatches(env);
@@ -443,6 +457,109 @@ async function resetCodes(request, env) {
   });
 }
 
+/* ------------------------------------------------------------- superadmin */
+// Staff management only. This layer can never read codes, cards, or stats.
+
+async function handleSuperadmin(request, env, seg, method) {
+  if (seg.length === 1 && seg[0] === 'migrate' && method === 'POST') return migrateStaff(env);
+  if (seg.length === 1 && seg[0] === 'staff' && method === 'GET') return listStaff(env);
+  if (seg.length === 1 && seg[0] === 'staff' && method === 'POST') return createStaff(request, env);
+  if (seg.length === 3 && seg[0] === 'staff' && method === 'PATCH') {
+    if (seg[2] === 'pause') return setStaffStatus(env, seg[1], 'paused');
+    if (seg[2] === 'resume') return setStaffStatus(env, seg[1], 'active');
+    if (seg[2] === 'rotate') return rotateStaff(request, env, seg[1]);
+  }
+  if (seg.length === 2 && seg[0] === 'staff' && method === 'DELETE') return deleteStaff(env, seg[1]);
+  return json({ error: 'Not found.' }, 404);
+}
+
+async function migrateStaff(env) {
+  // Idempotent — mirrors migrations/0002_staff.sql so a fresh database can be
+  // prepared from the superadmin page without touching wrangler or the console.
+  await env.DB.batch([
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS staff_tokens (
+         id           TEXT PRIMARY KEY,
+         name         TEXT NOT NULL,
+         token_hash   TEXT NOT NULL,
+         status       TEXT NOT NULL DEFAULT 'active',
+         created_at   TEXT NOT NULL,
+         last_used_at TEXT
+       )`
+    ),
+    env.DB.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_staff_status ON staff_tokens (status)'
+    ),
+  ]);
+  return json({ migrated: true });
+}
+
+async function listStaff(env) {
+  const rows = await env.DB.prepare(
+    'SELECT id, name, status, created_at, last_used_at FROM staff_tokens ORDER BY created_at'
+  ).all();
+  return json({ staff: rows.results || [] });
+}
+
+async function createStaff(request, env) {
+  const body = await readJson(request);
+  const name = String(body.name || '').trim().slice(0, 40);
+  if (!name) return json({ error: 'Enter a staff name.' }, 400);
+
+  const id = randHex(8);
+  const token = STAFF_TOKEN_PREFIX + randHex(STAFF_TOKEN_BYTES);
+  await env.DB.prepare(
+    'INSERT INTO staff_tokens (id, name, token_hash, status, created_at) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(id, name, await sha256Hex(token), 'active', new Date().toISOString())
+    .run();
+
+  return json({ id, name, token }, 201);
+}
+
+async function setStaffStatus(env, id, status) {
+  const changed = await env.DB.prepare('UPDATE staff_tokens SET status = ? WHERE id = ?')
+    .bind(status, id)
+    .run();
+  if (!changed.meta || !Number(changed.meta.changes)) return json({ error: 'Staff not found.' }, 404);
+  return json({ id, status });
+}
+
+async function rotateStaff(request, env, id) {
+  const body = await readJson(request);
+  const force = body.force === true;
+
+  const row = await env.DB.prepare('SELECT id FROM staff_tokens WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'Staff not found.' }, 404);
+
+  const active = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM staff_tokens WHERE id != ? AND status = 'active'"
+  )
+    .bind(id)
+    .first();
+  if (!force && Number(active.n) === 0) {
+    return json(
+      { error: 'This is the last active staff token. Pass force to rotate it anyway.' },
+      409
+    );
+  }
+
+  const token = STAFF_TOKEN_PREFIX + randHex(STAFF_TOKEN_BYTES);
+  await env.DB.prepare(
+    "UPDATE staff_tokens SET token_hash = ?, status = 'active' WHERE id = ?"
+  )
+    .bind(await sha256Hex(token), id)
+    .run();
+
+  return json({ id, token });
+}
+
+async function deleteStaff(env, id) {
+  const changed = await env.DB.prepare('DELETE FROM staff_tokens WHERE id = ?').bind(id).run();
+  if (!changed.meta || !Number(changed.meta.changes)) return json({ error: 'Staff not found.' }, 404);
+  return json({ id, deleted: true });
+}
+
 /* ---------------------------------------------------------------- helpers */
 
 async function cardState(env, id) {
@@ -477,14 +594,65 @@ async function getCard(env, id) {
   return env.DB.prepare('SELECT * FROM cards WHERE id = ?').bind(id).first();
 }
 
-function requireAdmin(request, env) {
-  const expected = env.ADMIN_TOKEN || '';
-  if (!expected) return json({ error: 'Admin token is not configured on the server.' }, 500);
+async function requireStaff(request, env) {
+  const header = request.headers.get('Authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  if (!token) return json({ error: 'Unauthorized.' }, 401);
+
+  // Legacy master token keeps working alongside staff tokens.
+  const legacy = env.ADMIN_TOKEN || '';
+  if (legacy && timingSafeEqual(token, legacy)) return null;
+
+  const row = await env.DB.prepare(
+    "SELECT id FROM staff_tokens WHERE token_hash = ? AND status = 'active'"
+  )
+    .bind(await sha256Hex(token))
+    .first();
+  if (!row) return json({ error: 'Unauthorized.' }, 401);
+
+  await env.DB.prepare('UPDATE staff_tokens SET last_used_at = ? WHERE id = ?')
+    .bind(new Date().toISOString(), row.id)
+    .run();
+  return null;
+}
+
+async function requireSuper(request, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  const since = new Date(Date.now() - SUPER_FAIL_WINDOW_MS).toISOString();
+  if (ip) {
+    // Isolated from stamp-code attempts: wrong customer codes must never lock out the superadmin.
+    const maxFails = clampInt(env.SUPER_FAILS_PER_IP, 1, 10000, SUPER_FAILS_PER_IP);
+    const fails = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM attempts WHERE card_id = 'superadmin' AND ip = ? AND ok = 0 AND at >= ?"
+    )
+      .bind(ip, since)
+      .first();
+    if (Number(fails.n) >= maxFails) {
+      return json({ error: 'Too many failed attempts. Please wait a few minutes and try again.' }, 429);
+    }
+  }
 
   const header = request.headers.get('Authorization') || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!token || !timingSafeEqual(token, expected)) return json({ error: 'Unauthorized.' }, 401);
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  const expected = env.SUPERADMIN_TOKEN_HASH || SUPERADMIN_HASH;
+  const ok = token && timingSafeEqualHex(await sha256Hex(token), expected);
+  await recordAttempt(env, 'superadmin', ip, !!ok);
+  if (!ok) return json({ error: 'Unauthorized.' }, 401);
   return null;
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function timingSafeEqualHex(a, b) {
+  const ae = String(a || '');
+  const be = String(b || '');
+  if (ae.length !== be.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ae.length; i++) diff |= ae.charCodeAt(i) ^ be.charCodeAt(i);
+  return diff === 0;
 }
 
 function timingSafeEqual(a, b) {

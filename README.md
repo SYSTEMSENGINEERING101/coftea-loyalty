@@ -13,14 +13,17 @@ coftea-loyalty/
 ├── public/                  everything that gets deployed
 │   ├── index.html           customer card
 │   ├── admin.html           staff dashboard + printing
+│   ├── sa-7k2f9q3x.html     hidden superadmin page (staff tokens only)
 │   ├── card.js              customer logic
 │   ├── admin.js             admin logic
+│   ├── sa-7k2f9q3x.js       superadmin logic
 │   ├── styles.css           all styles, including print CSS
 │   ├── manifest.json        "add to home screen" metadata
 │   ├── _worker.js           the entire API + static asset fallback
 │   └── _headers             security headers
 ├── migrations/
-│   └── 0001_init.sql        D1 schema
+│   ├── 0001_init.sql        D1 schema
+│   └── 0002_staff.sql       staff token table (same as superadmin "prepare")
 ├── scripts/
 │   └── smoke-test.mjs       end-to-end test of the whole loop
 └── wrangler.toml            Pages + D1 binding (CLI/local only)
@@ -52,7 +55,7 @@ Run the full flow as a test:
 npm run test:smoke
 ```
 
-It creates a card, generates a batch, stamps all 16 slots, checks that a code cannot be reused, checks out-of-order refusal, redeems both rewards, resets the card, and verifies staff lookup. 23 checks.
+It creates a card, generates a batch, stamps all 16 slots, checks that a code cannot be reused, checks out-of-order refusal, redeems both rewards, resets the card, verifies staff lookup, and exercises the whole superadmin/staff-token lifecycle (create, pause, resume, rotate, delete, plus the legacy token). 53 checks.
 
 Local data lives in `.wrangler/state`. Delete that folder to start fresh.
 
@@ -150,7 +153,22 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 
 ---
 
-## 5. Rules the server enforces
+## 5. Superadmin and staff tokens
+
+The dashboard accepts two kinds of sign-in: the **master admin token** (`ADMIN_TOKEN` secret) and per-staff tokens. The **superadmin** exists only to manage those staff tokens — create, new password, pause, resume, delete. The superadmin token cannot see or change codes, cards, stats, or anything else, and staff tokens cannot touch superadmin routes.
+
+- The superadmin page is deliberately unlinked: open `/sa-7k2f9q3x.html` directly (add `.html`). Nobody can find it from the site; don't bookmark it on shared machines, don't mention the address around staff.
+- Sign in with the superadmin token. Only a **SHA-256 hash** of it exists in this repo (`SUPERADMIN_HASH` at the top of `public/_worker.js`) — the plaintext is never committed, and staff tokens are stored hashed too. A new staff token is shown **once** at creation; copy it and hand it over in private.
+- **First run on a new database:** signing in prepares the `staff_tokens` table automatically (the same statements as `migrations/0002_staff.sql`). No console or CLI needed.
+- **Pause** blocks a token immediately (e.g. staff leaves); **Resume** re-enables it; **New password** rotates it and kills the old one (there is a safety check on rotating the last active token); **Delete** is permanent.
+- The legacy `ADMIN_TOKEN` secret keeps working alongside staff tokens as a master key — keep it in the owner’s password manager, not on the counter.
+- Failed superadmin sign-ins are rate-limited (5 per IP per 10 minutes, separate from the stamp-code limit).
+
+**Rotating the superadmin token** (if it ever leaks): compute `sha256(new-token)` (e.g. `node -e "console.log(require('crypto').createHash('sha256').update('NEW-TOKEN').digest('hex'))"`), replace `SUPERADMIN_HASH` in `public/_worker.js`, commit and push. For local testing you can also set `SUPERADMIN_TOKEN_HASH` in `.dev.vars` (gitignored) instead of editing the file.
+
+---
+
+## 6. Rules the server enforces
 
 | Rule | Where |
 |---|---|
@@ -160,13 +178,15 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 | Wrong codes are rate-limited: 8 per card / 10 min, 40 per IP | `attempts` table |
 | Reset only when all 16 slots are stamped | `resetCard` |
 | Rewards (8, 16) must be unlocked and can be claimed once per cycle | `redeemReward` |
-| Admin routes require `Authorization: Bearer <ADMIN_TOKEN>` | `requireAdmin` |
+| Admin routes accept the master token or an active staff token | `requireStaff` |
+| Superadmin routes accept only the superadmin token, 5 fails / IP / 10 min | `requireSuper` |
+| Staff tokens are stored and compared as SHA-256 hashes | `staff_tokens` table |
 
 Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway, so the real defences are rate limits and the server-side pool.
 
 ---
 
-## 6. Printing notes
+## 7. Printing notes
 
 - Slips are sized for POS receipt paper: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
 - Each slip is a small receipt block, roughly 28 mm tall: café name, "Enter your 7-digit code", the code, the one-line rule with the site address, and the batch/expiry footer. Slips are separated by a dashed line and print continuously instead of one page per slip.
@@ -177,7 +197,7 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 
 ---
 
-## 7. Backups
+## 8. Backups
 
 D1 has point-in-time restore, but keep a human-readable copy:
 
@@ -189,16 +209,16 @@ Do this monthly and after every new batch. On Windows PowerShell, use `"backups/
 
 ---
 
-## 8. Decisions you may want to revisit
+## 9. Decisions you may want to revisit
 
 - **The 16th slot needs a code.** The build matches your original brief: a code per stamp, rewards unlocked at 8 and 16. If you'd rather the free drink fill itself when slot 15 is stamped, that is a small change in `stampSlot` (allow slot 16 without burning a code).
 - **Codes are bearer tokens.** Whoever holds a slip can stamp it. That is the point — it is the proof of purchase. Staff should only hand slips out against a purchase.
 - **No customer accounts.** The card id lives on the phone; a phone number can be saved for staff lookup, and "Copy card link" moves a card to a new device. There is no password, by design — the reward is worth less than the friction of a login.
-- **One admin token, shared.** Fine for a small shop. If several staff need different access, add Cloudflare Access in front of `/admin.html`.
+- **Staff sign-in.** Each staff member can have their own token managed by the superadmin (section 5); the master `ADMIN_TOKEN` remains as the owner’s fallback.
 
 ---
 
-## 9. Known limits
+## 10. Known limits
 
 - Google Fonts is loaded from a CDN. If you want fully offline rendering, drop licensed `Hatton` and `Raleway` woff2 files into `public/fonts/`, add `@font-face` rules to `styles.css`, and remove the Google link. Hatton is commercial — you need the licence.
 - No stamp reversal or refund tool yet. A mis-stamped slot can only be fixed with a database update.
@@ -207,7 +227,7 @@ Do this monthly and after every new batch. On Windows PowerShell, use `"backups/
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|

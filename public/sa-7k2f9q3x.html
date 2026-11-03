@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#faf8f5">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap admin-wrap app-shell">
+    <header class="top">
+      <div class="brand">
+        <a class="mark" href="/" aria-label="Coftea Cafe home">C</a>
+        <div>
+          <p class="brand-name">Coftea Cafe — Ipil</p>
+          <p class="brand-sub">Access</p>
+        </div>
+      </div>
+      <div>
+        <button class="ghost-link" id="sign-out" type="button" hidden style="background:none;border:0;border-bottom:1px solid transparent;cursor:pointer">Sign out</button>
+      </div>
+    </header>
+
+    <section class="panel gate" id="gate">
+      <div class="panel-head" style="margin-bottom:8px">
+        <div>
+          <h2>Sign in</h2>
+          <p class="hint">Restricted area.</p>
+        </div>
+      </div>
+      <form id="gate-form" novalidate>
+        <div class="field">
+          <label class="label" for="token-input">Access token</label>
+          <input class="input" id="token-input" type="password" autocomplete="current-password" placeholder="••••••••••">
+        </div>
+        <p class="err" id="gate-error" role="alert" hidden></p>
+        <button class="btn" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <div id="app" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Staff tokens</h2>
+            <p class="hint">Create a token for each staff member. Staff sign in to the dashboard with it. Give the token once, in private — it cannot be shown again.</p>
+          </div>
+        </div>
+        <form class="row" id="create-form" novalidate>
+          <label class="field" style="flex:1 1 240px">
+            <span class="label">Staff name</span>
+            <input class="input" id="staff-name" maxlength="40" placeholder="e.g. Ana — morning shift">
+          </label>
+          <button class="btn" type="submit" style="align-self:flex-end">Create staff</button>
+        </form>
+        <p class="err" id="create-error" role="alert" hidden></p>
+      </section>
+
+      <section class="panel" id="staff-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Active staff</h2>
+            <p class="hint">Pausing blocks a token immediately. Deleting is permanent.</p>
+          </div>
+        </div>
+        <div class="table-wrap" style="max-height:none">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Last used</th>
+                <th class="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="staff-rows"></tbody>
+          </table>
+        </div>
+        <p class="empty" id="staff-empty" hidden>No staff tokens yet.</p>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal" id="token-modal" hidden>
+    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="token-modal-title">
+      <h3 id="token-modal-title">Token created</h3>
+      <p class="hint" id="token-modal-sub">Give this token to <b id="token-modal-name"></b> in private. It will never be shown again.</p>
+      <div class="token-reveal">
+        <code class="mono" id="token-value"></code>
+        <button class="mini primary" type="button" id="token-copy">Copy</button>
+      </div>
+      <p class="err" id="token-copy-note" hidden></p>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="token-done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="confirm-modal" hidden>
+    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p class="hint" id="confirm-text"></p>
+      <div class="modal-actions">
+        <button class="mini" type="button" id="confirm-cancel">Cancel</button>
+        <button class="mini danger" type="button" id="confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/sa-7k2f9q3x.js" type="module"></script>
+</body>
+</html>
