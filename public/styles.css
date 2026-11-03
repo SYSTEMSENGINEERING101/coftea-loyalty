@@ -1601,24 +1601,27 @@ td.right {
 
 .pos-grid {
   display: grid;
+  width: 100%;
+  container-type: inline-size;
 }
 
+/* Only a light rule under each row, like a cutting guide — no cells, no box. */
 .pos-cell {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 8mm;
-  padding: 1.6mm 0;
-  border-right: 1px solid #d0d0d0;
-  border-bottom: 1px solid #d0d0d0;
+  padding: 2.6mm 0;
+  border-bottom: 0.2mm solid #c4c4c4;
   color: #000;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .pos-code {
   font-family: "Bahnschrift", "Arial Narrow", "Liberation Sans Narrow", Arial, sans-serif;
   font-stretch: condensed;
-  font-size: var(--code-size, 10pt);
+  font-size: var(--code-size, 4.5mm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;

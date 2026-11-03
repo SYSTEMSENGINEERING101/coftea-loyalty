@@ -119,25 +119,25 @@
           </div>
           <div class="row" style="gap:14px">
             <div class="field" style="flex:0 0 auto">
-              <span class="label">Slips to print</span>
+              <span class="label">Codes to print</span>
               <div class="qtypick">
-                <button class="qtystep" type="button" id="qty-minus" aria-label="One fewer slip">−</button>
-                <input class="qtyinput" id="qty-value" type="number" min="1" step="1" value="1" inputmode="numeric" aria-label="Number of slips to print">
-                <button class="qtystep" type="button" id="qty-plus" aria-label="One more slip">+</button>
-                <button class="qtychev" type="button" id="qty-toggle" aria-label="Choose number of slips" aria-haspopup="listbox" aria-expanded="false">
+                <button class="qtystep" type="button" id="qty-minus" aria-label="One fewer code">−</button>
+                <input class="qtyinput" id="qty-value" type="number" min="1" step="1" value="1" inputmode="numeric" aria-label="Number of codes to print">
+                <button class="qtystep" type="button" id="qty-plus" aria-label="One more code">+</button>
+                <button class="qtychev" type="button" id="qty-toggle" aria-label="Choose number of codes" aria-haspopup="listbox" aria-expanded="false">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
                 </button>
                 <div class="qtypop" id="qty-pop" hidden>
-                  <p class="qtypop-title">Slips to print</p>
-                  <div class="qtylist" id="qty-list" role="listbox" aria-label="Number of slips"></div>
+                  <p class="qtypop-title">Codes to print</p>
+                  <div class="qtylist" id="qty-list" role="listbox" aria-label="Number of codes"></div>
                 </div>
               </div>
             </div>
             <label class="field" style="flex:0 0 auto">
               <span class="label">Receipt width</span>
               <select class="input" id="receipt-width">
-                <option value="58" selected>58 mm — small POS</option>
-                <option value="80">80 mm — standard POS</option>
+                <option value="58">58 mm — small POS</option>
+                <option value="80" selected>80 mm — standard POS</option>
               </select>
             </label>
             <label class="checkline" style="padding-bottom:0">
@@ -160,7 +160,7 @@
             <tbody id="batch-rows"></tbody>
           </table>
         </div>
-        <p class="note" id="print-note">Each batch Print button prints the number of codes set above, taken from that batch's unused codes. 80 mm paper gets 7 columns, 58 mm gets 5, with the digits enlarged to fill each cell. Printing uses your browser's print dialog: pick your receipt printer, 100% scale, no margins or headers.</p>
+        <p class="note" id="print-note">Each batch Print button prints the number of codes set above, taken from that batch's unused codes. Codes print five across on 80 mm paper (four on 58 mm), edge to edge, with the digits as large as each cell allows; long runs simply continue onto the next page. Printing uses your browser's print dialog: pick your receipt printer, 100% scale, no margins or headers.</p>
       </section>
 
       <section class="panel" id="panel-codes">

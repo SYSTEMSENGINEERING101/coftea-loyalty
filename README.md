@@ -1,6 +1,6 @@
 # Coftea Cafe — Ipil · Virtual Loyalty Card
 
-A real, server-side loyalty card: customers collect 16 stamps by entering one-time 7-digit codes that staff hand out with each drink. Slot 8 is a free upsize, slot 16 is a free drink. Staff generate codes in batches and print POS-sized slips.
+A real, server-side loyalty card: customers collect 16 stamps by entering one-time 7-digit codes that staff hand out with each drink. Slot 8 is a free upsize, slot 16 is a free drink. Staff generate codes in batches and print the codes on POS receipt paper.
 
 **Stack:** Cloudflare Pages (static + `_worker.js`) · D1 (SQLite) · vanilla JS · no build step.
 
@@ -135,11 +135,11 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 1. Open `/admin.html`, sign in with the admin token.
 2. **Generate a code batch**: label `November 2026`, 500 codes, 90 days.
 3. Pick a **receipt width**: `58 mm` for a small POS printer or `80 mm` for a standard one.
-4. Set **Slips to print** (`1` by default). Type the number or use the `−`/`+` buttons; the arrow opens a scrollable number list up to the batch's available codes.
+4. Set **Codes to print** (`1` by default). Type the number or use the `−`/`+` buttons; the arrow opens a scrollable number list up to the batch's available codes.
 5. Print either:
    - that many codes from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
    - only specific codes — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-6. Printing is codes only, edge to edge with no side margins: **7 columns on 80 mm paper, 5 on 58 mm**, with the digits automatically enlarged to the widest size each cell allows. Cells are uniform height with thin grey cut lines between them. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
+6. Printing is codes only, edge to edge with no side margins: **5 columns on 80 mm paper, 4 on 58 mm**, with the digits automatically enlarged to the widest size each cell allows (~13 pt on 80 mm). Rows have one thin grey cut line and no vertical or outer lines; long runs continue onto the next page. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
 7. Cut the grid into individual codes and hand one per drink.
 8. Print a QR code pointing at the site root and put it on the counter / table tent.
 9. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
@@ -190,11 +190,12 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 ## 7. Printing notes
 
 - Paper is POS receipt roll: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean hairline grid: **7 columns on 80 mm**, **5 on 58 mm**, every cell the same height, and the digits sized automatically to fill the cell (roughly 10 pt on 80 mm with a condensed face).
-- Printing a batch produces the number of codes chosen in **Slips to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
+- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean grid: **5 columns on 80 mm**, **4 on 58 mm**, no vertical or outer lines, and a single light rule under each row as a cutting guide. The digits are sized automatically to the widest that fits a cell (roughly 13 pt on 80 mm with a condensed face).
+- Long batches simply flow onto the next page; rows never split in half.
+- Printing a batch produces the number of codes chosen in **Codes to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.
-- If the browser's print preview shows a full A4 page, check that the printer's paper size is set to the receipt roll (58 mm or 80 mm) rather than A4.
+- If the browser's print preview shows a full A4 page, set the printer's paper size to the receipt roll (58 mm or 80 mm) rather than A4. The grid still stretches to whatever paper is used, so on A4 the codes print very large instead of leaving blank space.
 
 ---
 
@@ -237,5 +238,5 @@ Do this monthly and after every new batch. On Windows PowerShell, use `"backups/
 | Admin says "Admin token is not configured" | `.dev.vars` missing locally, or the secret was added after the last deployment — deploy again |
 | Bindings empty / `env.DB` undefined | the D1 binding was added after the last deployment — create a new deployment (dashboard) or redeploy (CLI) |
 | Every code says invalid | the code's batch expired, or you are testing against a different database than the one that generated them |
-| Print sheet is blank | wait for the slip list to build, then confirm the print dialog opened; if the preview is A4-sized, set the printer paper to 58 mm / 80 mm receipt paper |
+| Print sheet is blank | wait for the code grid to build, then confirm the print dialog opened; if the preview is A4-sized, set the printer paper to 58 mm / 80 mm receipt paper |
 | Code refuses to stamp | slot order: the card only accepts the next slot in sequence |
