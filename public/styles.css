@@ -1601,16 +1601,6 @@ td.right {
 
 .pos-grid {
   display: grid;
-  border-top: 1px dashed #000;
-  border-left: 1px dashed #000;
-}
-
-.pos-cols-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.pos-cols-5 {
-  grid-template-columns: repeat(5, 1fr);
 }
 
 .pos-cell {
@@ -1618,28 +1608,29 @@ td.right {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 8.5mm;
-  padding: 1.4mm 0.3mm;
-  border-right: 1px dashed #000;
-  border-bottom: 1px dashed #000;
+  min-height: 8mm;
+  padding: 1.6mm 0;
+  border-right: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
   color: #000;
 }
 
 .pos-code {
-  font-family: var(--mono);
-  font-size: 9pt;
+  font-family: "Bahnschrift", "Arial Narrow", "Liberation Sans Narrow", Arial, sans-serif;
+  font-stretch: condensed;
+  font-size: var(--code-size, 10pt);
   font-weight: 700;
-  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
 }
 
-.pos-cols-5 .pos-code {
-  font-size: 10pt;
-}
-
 @media print {
+  html,
   body {
+    margin: 0;
+    padding: 0;
     background: #fff;
   }
 

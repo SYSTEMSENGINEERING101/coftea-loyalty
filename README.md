@@ -139,7 +139,7 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 5. Print either:
    - that many codes from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
    - only specific codes — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-6. Printing is codes only, in a tight grid with dashed cut lines: **4 columns on 58 mm paper, 5 columns on 80 mm**, uniform cells with no blank space between rows. In the print dialog pick your receipt printer, **100% scale**, and turn off headers and footers.
+6. Printing is codes only, edge to edge with no side margins: **7 columns on 80 mm paper, 5 on 58 mm**, with the digits automatically enlarged to the widest size each cell allows. Cells are uniform height with thin grey cut lines between them. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
 7. Cut the grid into individual codes and hand one per drink.
 8. Print a QR code pointing at the site root and put it on the counter / table tent.
 9. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
@@ -190,7 +190,7 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 ## 7. Printing notes
 
 - Paper is POS receipt roll: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- The printout is codes only — no café name, no instructions, no expiry. Codes sit in a tight grid with dashed cut lines: **4 columns on 58 mm**, **5 columns on 80 mm**, every cell the same height with no gaps between rows.
+- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean hairline grid: **7 columns on 80 mm**, **5 on 58 mm**, every cell the same height, and the digits sized automatically to fill the cell (roughly 10 pt on 80 mm with a condensed face).
 - Printing a batch produces the number of codes chosen in **Slips to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.

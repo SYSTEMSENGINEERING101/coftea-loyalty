@@ -689,9 +689,11 @@ function buildSlips(batch, codes, width) {
   const root = el('print-root');
   root.replaceChildren();
 
-  // Codes only, in a tight grid: uniform cells, dashed cut lines, no prose.
+  // Codes only, filling the paper edge to edge: 7 columns on 80 mm, 5 on 58 mm.
+  const cols = Number(width) >= 80 ? 7 : 5;
   const grid = document.createElement('div');
-  grid.className = 'pos-grid ' + (Number(width) >= 80 ? 'pos-cols-5' : 'pos-cols-4');
+  grid.className = 'pos-grid';
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
   codes.forEach((code) => {
     const cell = document.createElement('div');
@@ -704,7 +706,27 @@ function buildSlips(batch, codes, width) {
   });
 
   root.appendChild(grid);
+  fitCodeFont(grid, Number(width), cols);
   setPageSize(width);
+}
+
+// Grow the digits to the widest size that fits one cell, measured with the
+// font actually available on this machine (Arial Narrow and Bahnschrift differ
+// a lot from the fallback, so a fixed pt value would either overflow or waste space).
+function fitCodeFont(grid, widthMm, cols) {
+  const cellMm = widthMm / cols;
+  const availPx = Math.max(1, (cellMm - 0.5) * (96 / 25.4));
+
+  const probe = document.createElement('span');
+  probe.className = 'pos-code';
+  probe.textContent = '0000000';
+  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-size:100px';
+  document.body.appendChild(probe);
+  const widthPerPx = probe.getBoundingClientRect().width / 100;
+  probe.remove();
+
+  const size = availPx / widthPerPx;
+  grid.style.setProperty('--code-size', `${size.toFixed(2)}px`);
 }
 
 function setPageSize(width) {
