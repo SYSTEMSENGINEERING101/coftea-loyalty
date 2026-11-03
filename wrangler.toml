@@ -7,4 +7,4 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "coftea-loyalty"
-database_id = "5992ad89-5fc9-488f-87ce-c42603fb3106"
+database_id = "b9e1a7af-25c5-4479-b1d9-9a75570522dd"
