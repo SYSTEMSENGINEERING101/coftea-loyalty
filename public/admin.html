@@ -133,13 +133,6 @@
                 </div>
               </div>
             </div>
-            <label class="field" style="flex:0 0 auto">
-              <span class="label">Receipt width</span>
-              <select class="input" id="receipt-width">
-                <option value="58">58 mm — small POS</option>
-                <option value="80" selected>80 mm — standard POS</option>
-              </select>
-            </label>
             <label class="checkline" style="padding-bottom:0">
               <input type="checkbox" id="include-used">
               Include used codes
@@ -160,7 +153,7 @@
             <tbody id="batch-rows"></tbody>
           </table>
         </div>
-        <p class="note" id="print-note">Each batch Print button prints the number of codes set above, taken from that batch's unused codes. Codes print five across on 80 mm paper (four on 58 mm), edge to edge, with the digits as large as each cell allows; long runs simply continue onto the next page. Printing uses your browser's print dialog: pick your receipt printer, 100% scale, no margins or headers.</p>
+        <p class="note" id="print-note">Each batch Print button prints the number of codes set above, taken from that batch's unused codes. Codes print five across, edge to edge, and the grid always fills the paper — no fixed width, so it cannot leave a blank strip on the roll. Digits are as large as each cell allows, long runs continue onto the next page, and printing a single code prints it across the full width. In the browser's print dialog pick your receipt printer, 100% scale, margins None.</p>
       </section>
 
       <section class="panel" id="panel-codes">

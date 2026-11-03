@@ -134,15 +134,14 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 
 1. Open `/admin.html`, sign in with the admin token.
 2. **Generate a code batch**: label `November 2026`, 500 codes, 90 days.
-3. Pick a **receipt width**: `58 mm` for a small POS printer or `80 mm` for a standard one.
-4. Set **Codes to print** (`1` by default). Type the number or use the `−`/`+` buttons; the arrow opens a scrollable number list up to the batch's available codes.
-5. Print either:
+3. Set **Codes to print** (`1` by default). Type the number or use the `−`/`+` buttons; the arrow opens a scrollable number list up to the batch's available codes.
+4. Print either:
    - that many codes from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
    - only specific codes — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-6. Printing is codes only, edge to edge with no side margins: **5 columns on 80 mm paper, 4 on 58 mm**, with the digits automatically enlarged to the widest size each cell allows (~13 pt on 80 mm). Rows have one thin grey cut line and no vertical or outer lines; long runs continue onto the next page. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
-7. Cut the grid into individual codes and hand one per drink.
-8. Print a QR code pointing at the site root and put it on the counter / table tent.
-9. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
+5. Printing is codes only: **five across**, edge to edge, with the digits automatically enlarged to the widest size each cell allows (~13 pt on 80 mm). No page width is forced, so the grid fills the paper the printer reports — it cannot leave a blank strip on the roll. Rows have one thin grey cut line and no vertical or outer lines; long runs continue onto the next page. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
+6. Cut the grid into individual codes and hand one per drink.
+7. Print a QR code pointing at the site root and put it on the counter / table tent.
+8. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
 
 **Daily overview:** the Overview panel defaults to today. Use the calendar chip for presets (Today, Yesterday, This month, This year, Last month) or click two dates for a custom range. Used codes, new cards, stamps and rewards follow the range; codes and unused stock are always all-time totals. Each card is clickable: Codes/Unused/Used jump to the Codes table with that filter applied, and New cards/Stamps/Rewards jump to the customer card list.
 
@@ -190,12 +189,14 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 ## 7. Printing notes
 
 - Paper is POS receipt roll: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean grid: **5 columns on 80 mm**, **4 on 58 mm**, no vertical or outer lines, and a single light rule under each row as a cutting guide. The digits are sized automatically to the widest that fits a cell (roughly 13 pt on 80 mm with a condensed face).
+- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean grid: **five across**, no vertical or outer lines, and a single light rule under each row as a cutting guide. The digits are sized automatically to the widest that fits a cell (roughly 13 pt on 80 mm with a condensed face).
+- There is no receipt-width setting: the grid measures the page the printer reports and fills it. The same sheet prints correctly on 80 mm, 58 mm or A4 paper; only the digit size changes.
 - Long batches simply flow onto the next page; rows never split in half.
 - Printing a batch produces the number of codes chosen in **Codes to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
 - The dashboard warns you if you try to print an expired batch (its codes would be refused).
 - "Include used codes" exists for reprints after a paper jam; normally leave it off.
-- If the browser's print preview shows a full A4 page, set the printer's paper size to the receipt roll (58 mm or 80 mm) rather than A4. The grid still stretches to whatever paper is used, so on A4 the codes print very large instead of leaving blank space.
+- If the browser's print preview shows a full A4 page, set the printer's paper size to the receipt roll (58 mm or 80 mm) rather than A4. The grid stretches to whatever paper is used, so on A4 the codes print very large instead of leaving blank space.
+- Printing a single code (the default) prints it across the full paper width, not as one small cell.
 
 ---
 

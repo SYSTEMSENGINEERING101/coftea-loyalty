@@ -669,7 +669,7 @@ function printSelected() {
 }
 
 function printCodes(batch, codes) {
-  buildSlips(batch, codes, el('receipt-width').value);
+  buildSlips(batch, codes);
 
   const previousTitle = document.title;
   document.title = `Coftea ${batch.label} - ${codes.length} codes`;
@@ -685,14 +685,15 @@ function printCodes(batch, codes) {
   setTimeout(() => window.print(), 120);
 }
 
-function buildSlips(batch, codes, width) {
+function buildSlips(batch, codes) {
   const root = el('print-root');
   root.replaceChildren();
 
-  // Codes only, edge to edge: 5 across on 80 mm paper, 4 on 58 mm, so both
-  // get cells of roughly 15 mm and the digits are as large as the paper allows.
-  const widthMm = Number(width) >= 80 ? 80 : 58;
-  const cols = Math.min(widthMm >= 80 ? 5 : 4, codes.length);
+  // Codes only, edge to edge: five across, or one cell per code when printing
+  // just a few. No page width is forced — the grid fills whatever paper the
+  // print dialog uses, so a 58 mm setting can never leave a blank strip on an
+  // 80 mm roll again.
+  const cols = Math.min(5, codes.length);
 
   const grid = document.createElement('div');
   grid.className = 'pos-grid';
@@ -710,15 +711,19 @@ function buildSlips(batch, codes, width) {
 
   root.appendChild(grid);
 
-  const sizeMm = fitCodeFont(widthMm, cols);
+  // Absolute size for browsers without container units: assume 80 mm paper.
+  // The fraction keeps a 0.9 mm gap between codes at any paper width.
+  const advance = measureAdvance();
+  const designMm = 80;
+  const sizeMm = (designMm / cols - 0.9) / advance;
   grid.style.setProperty('--code-size', `${((sizeMm / 25.4) * 96).toFixed(2)}px`);
-  setPageSize(widthMm, sizeMm / widthMm);
+  setPageSize(sizeMm / designMm);
 }
 
-// Widest font size that fits seven digits in one cell, measured with the font
-// actually installed (Arial Narrow and Bahnschrift differ a lot from fallback,
-// so a fixed pt value would either overflow or waste half the paper).
-function fitCodeFont(widthMm, cols) {
+// Width of a seven-digit code per 1 px of font size, measured with the font
+// actually installed (Arial Narrow and Bahnschrift differ a lot from the
+// fallback, so a fixed pt value would either overflow or waste half the paper).
+function measureAdvance() {
   const probe = document.createElement('span');
   probe.className = 'pos-code';
   probe.textContent = '0000000';
@@ -726,23 +731,21 @@ function fitCodeFont(widthMm, cols) {
   document.body.appendChild(probe);
   const advance = probe.getBoundingClientRect().width / 100;
   probe.remove();
-
-  const cellMm = widthMm / cols - 0.9;
-  return cellMm / advance;
+  return advance;
 }
 
-function setPageSize(widthMm, sizeFraction) {
+function setPageSize(sizeFraction) {
   let style = document.getElementById('pos-page');
   if (!style) {
     style = document.createElement('style');
     style.id = 'pos-page';
     document.head.appendChild(style);
   }
-  // The @page size asks for a true 80/58 mm page; the container-query rule then
-  // sizes the type from the paper actually used, so the codes still fill the
-  // width if the printer falls back to A4.
+  // No @page size: the page stays whatever paper the printer reports, so the
+  // grid can never sit in a 58 mm strip on an 80 mm roll. The type is a
+  // fraction of the real page width, so five codes always span it completely.
   style.textContent = `@media print {
-  @page { size: ${widthMm}mm auto; margin: 0; }
+  @page { margin: 0; }
   #print-root { width: 100%; }
   .pos-grid { container-type: inline-size; }
   @supports (font-size: 1cqw) {
@@ -1057,12 +1060,6 @@ el('qty-value').addEventListener('keydown', (event) => {
 });
 
 el('include-used').addEventListener('change', () => buildQtyList());
-
-const savedWidth = localStorage.getItem('coftea.receiptWidth');
-if (savedWidth === '58' || savedWidth === '80') el('receipt-width').value = savedWidth;
-el('receipt-width').addEventListener('change', () => {
-  localStorage.setItem('coftea.receiptWidth', el('receipt-width').value);
-});
 
 el('range-btn').addEventListener('click', () => {
   if (el('range-pop').hidden) openRange();
