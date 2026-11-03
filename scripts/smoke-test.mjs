@@ -239,6 +239,23 @@ check('a deleted token is rejected', deletedDenied.status === 401);
 const legacy = await call('/admin/stats', { token: TOKEN });
 check('the legacy admin token still works', legacy.status === 200);
 
+// 11. superadmin token rotation (hash stored in the settings table)
+const changed = await call('/superadmin/token', { method: 'POST', token: SUPER_TOKEN, body: { token: 'rotated-super-token-1' } });
+check('superadmin can change the token', changed.status === 200 && changed.data.changed === true, `status ${changed.status}`);
+
+const oldSuper = await call('/superadmin/staff', { token: SUPER_TOKEN });
+check('the old superadmin token dies after rotation', oldSuper.status === 401);
+
+const newSuper = await call('/superadmin/staff', { token: 'rotated-super-token-1' });
+check('the new superadmin token works', newSuper.status === 200);
+
+const shortToken = await call('/superadmin/token', { method: 'POST', token: 'rotated-super-token-1', body: { token: 'short' } });
+check('a too-short token is refused', shortToken.status === 400);
+
+await call('/superadmin/token', { method: 'POST', token: 'rotated-super-token-1', body: { token: SUPER_TOKEN } });
+const back = await call('/superadmin/staff', { token: SUPER_TOKEN });
+check('rotating back restores the default token', back.status === 200);
+
 console.log(`\n${passed} checks passed, ${failures.length} failed`);
 if (failures.length) {
   failures.forEach((f) => console.log('  - ' + f));

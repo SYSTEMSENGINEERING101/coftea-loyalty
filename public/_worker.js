@@ -462,6 +462,7 @@ async function resetCodes(request, env) {
 
 async function handleSuperadmin(request, env, seg, method) {
   if (seg.length === 1 && seg[0] === 'migrate' && method === 'POST') return migrateStaff(env);
+  if (seg.length === 1 && seg[0] === 'token' && method === 'POST') return changeSuperToken(request, env);
   if (seg.length === 1 && seg[0] === 'staff' && method === 'GET') return listStaff(env);
   if (seg.length === 1 && seg[0] === 'staff' && method === 'POST') return createStaff(request, env);
   if (seg.length === 3 && seg[0] === 'staff' && method === 'PATCH') {
@@ -490,8 +491,19 @@ async function migrateStaff(env) {
     env.DB.prepare(
       'CREATE INDEX IF NOT EXISTS idx_staff_status ON staff_tokens (status)'
     ),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)'),
   ]);
   return json({ migrated: true });
+}
+
+async function changeSuperToken(request, env) {
+  const body = await readJson(request);
+  const token = String(body.token || '').trim();
+  if (token.length < 10) {
+    return json({ error: 'The new token must be at least 10 characters.' }, 400);
+  }
+  await setSetting(env, 'superadmin_hash', await sha256Hex(token));
+  return json({ changed: true });
 }
 
 async function listStaff(env) {
@@ -634,11 +646,45 @@ async function requireSuper(request, env) {
 
   const header = request.headers.get('Authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  const expected = env.SUPERADMIN_TOKEN_HASH || SUPERADMIN_HASH;
+  const dbHash = await getSetting(env, 'superadmin_hash');
+  const expected = dbHash || env.SUPERADMIN_TOKEN_HASH || SUPERADMIN_HASH;
   const ok = token && timingSafeEqualHex(await sha256Hex(token), expected);
   await recordAttempt(env, 'superadmin', ip, !!ok);
   if (!ok) return json({ error: 'Unauthorized.' }, 401);
+
+  // First successful sign-in on a fresh database: pin the hash in the settings
+  // table so the token can later be rotated from the UI without a deploy.
+  if (!dbHash) {
+    try {
+      await setSetting(env, 'superadmin_hash', await sha256Hex(token));
+    } catch {
+      /* settings table not created yet — the migrate endpoint makes it */
+    }
+  }
+  if (ip) {
+    await env.DB.prepare("DELETE FROM attempts WHERE card_id = 'superadmin' AND ip = ?")
+      .bind(ip)
+      .run()
+      .catch(() => {});
+  }
   return null;
+}
+
+async function getSetting(env, key) {
+  try {
+    const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+    return row ? row.value : null;
+  } catch {
+    return null;
+  }
+}
+
+async function setSetting(env, key, value) {
+  await env.DB.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  )
+    .bind(key, value)
+    .run();
 }
 
 async function sha256Hex(value) {

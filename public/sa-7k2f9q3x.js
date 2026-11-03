@@ -255,6 +255,30 @@ el('create-form').addEventListener('submit', async (e) => {
   }
 });
 
+el('token-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const value = el('super-token').value.trim();
+  const box = el('token-error');
+  if (value.length < 10) {
+    box.textContent = 'The new token must be at least 10 characters.';
+    box.hidden = false;
+    return;
+  }
+  try {
+    box.hidden = true;
+    await request('/superadmin/token', { method: 'POST', body: { token: value } });
+    el('changed-modal').hidden = false;
+  } catch (err) {
+    box.textContent = err.message;
+    box.hidden = false;
+  }
+});
+
+el('changed-ok').addEventListener('click', () => {
+  sessionStorage.removeItem(TOKEN_KEY);
+  location.reload();
+});
+
 el('token-copy').addEventListener('click', async () => {
   const note = el('token-copy-note');
   try {

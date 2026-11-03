@@ -85,6 +85,23 @@
         </div>
         <p class="empty" id="staff-empty" hidden>No staff tokens yet.</p>
       </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Superadmin token</h2>
+            <p class="hint">Stored as a hash in the database — never in the code. Changing it signs every superadmin session out immediately.</p>
+          </div>
+        </div>
+        <form class="row" id="token-form" novalidate>
+          <label class="field" style="flex:1 1 240px">
+            <span class="label">New superadmin token</span>
+            <input class="input" id="super-token" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters">
+          </label>
+          <button class="btn" type="submit" style="align-self:flex-end">Change token</button>
+        </form>
+        <p class="err" id="token-error" role="alert" hidden></p>
+      </section>
     </div>
   </main>
 
@@ -99,6 +116,16 @@
       <p class="err" id="token-copy-note" hidden></p>
       <div class="modal-actions">
         <button class="btn" type="button" id="token-done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="changed-modal" hidden>
+    <div class="modal-box" role="alertdialog" aria-modal="true">
+      <h3>Token changed</h3>
+      <p class="hint">The old superadmin token no longer works. You will be signed out — sign in again with the new token.</p>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="changed-ok">Sign out</button>
       </div>
     </div>
   </div>
