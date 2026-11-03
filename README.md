@@ -23,7 +23,8 @@ coftea-loyalty/
 │   └── _headers             security headers
 ├── migrations/
 │   ├── 0001_init.sql        D1 schema
-│   └── 0002_staff.sql       staff token table (same as superadmin "prepare")
+│   ├── 0002_staff.sql       staff token table
+│   └── 0003_settings.sql    key/value settings (superadmin hash lives here)
 ├── scripts/
 │   └── smoke-test.mjs       end-to-end test of the whole loop
 └── wrangler.toml            Pages + D1 binding (CLI/local only)
@@ -55,7 +56,7 @@ Run the full flow as a test:
 npm run test:smoke
 ```
 
-It creates a card, generates a batch, stamps all 16 slots, checks that a code cannot be reused, checks out-of-order refusal, redeems both rewards, resets the card, verifies staff lookup, and exercises the whole superadmin/staff-token lifecycle (create, pause, resume, rotate, delete, plus the legacy token). 53 checks.
+It creates a card, generates a batch, stamps all 16 slots, checks that a code cannot be reused, checks out-of-order refusal, redeems both rewards, resets the card, verifies staff lookup, and exercises the whole superadmin/staff-token lifecycle (create, pause, resume, rotate, delete, superadmin-token rotation, plus the legacy token). 58 checks.
 
 Local data lives in `.wrangler/state`. Delete that folder to start fresh.
 
@@ -155,16 +156,16 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 
 ## 5. Superadmin and staff tokens
 
-The dashboard accepts two kinds of sign-in: the **master admin token** (`ADMIN_TOKEN` secret) and per-staff tokens. The **superadmin** exists only to manage those staff tokens — create, new password, pause, resume, delete. The superadmin token cannot see or change codes, cards, stats, or anything else, and staff tokens cannot touch superadmin routes.
+The dashboard accepts two kinds of sign-in: the **master admin token** (`ADMIN_TOKEN` secret) and per-staff tokens. The **superadmin** exists only to manage those staff tokens — create, new password, pause, resume, delete — and to rotate its own token. The superadmin token cannot see or change codes, cards, stats, or anything else, and staff tokens cannot touch superadmin routes.
 
 - The superadmin page is deliberately unlinked: open `/sa-7k2f9q3x.html` directly (add `.html`). Nobody can find it from the site; don't bookmark it on shared machines, don't mention the address around staff.
-- Sign in with the superadmin token. Only a **SHA-256 hash** of it exists in this repo (`SUPERADMIN_HASH` at the top of `public/_worker.js`) — the plaintext is never committed, and staff tokens are stored hashed too. A new staff token is shown **once** at creation; copy it and hand it over in private.
-- **First run on a new database:** signing in prepares the `staff_tokens` table automatically (the same statements as `migrations/0002_staff.sql`). No console or CLI needed.
-- **Pause** blocks a token immediately (e.g. staff leaves); **Resume** re-enables it; **New password** rotates it and kills the old one (there is a safety check on rotating the last active token); **Delete** is permanent.
+- Sign in with the superadmin token. The token's **SHA-256 hash** lives in the database (`settings` table, key `superadmin_hash`) — the first successful sign-in writes it there automatically, and it is never stored in code or plaintext. The hash baked into `public/_worker.js` (`SUPERADMIN_HASH`) is only the factory default used until the first sign-in. Staff tokens are also stored hashed. A new staff token is shown **once** at creation; copy it and hand it over in private.
+- **Change superadmin token** (on the superadmin page): type the new token, confirm, and every superadmin session is signed out — the old token stops working immediately. No deploy needed.
+- **Pause** blocks a staff token immediately (e.g. staff leaves); **Resume** re-enables it; **New password** rotates it and kills the old one (there is a safety check on rotating the last active token); **Delete** is permanent.
 - The legacy `ADMIN_TOKEN` secret keeps working alongside staff tokens as a master key — keep it in the owner’s password manager, not on the counter.
-- Failed superadmin sign-ins are rate-limited (5 per IP per 10 minutes, separate from the stamp-code limit).
+- Failed superadmin sign-ins are rate-limited (5 per IP per 10 minutes, separate from the stamp-code limit); one successful sign-in clears that IP's counter.
 
-**Rotating the superadmin token** (if it ever leaks): compute `sha256(new-token)` (e.g. `node -e "console.log(require('crypto').createHash('sha256').update('NEW-TOKEN').digest('hex'))"`), replace `SUPERADMIN_HASH` in `public/_worker.js`, commit and push. For local testing you can also set `SUPERADMIN_TOKEN_HASH` in `.dev.vars` (gitignored) instead of editing the file.
+**Self-hosters — set your own superadmin token before going live:** sign in at `/sa-7k2f9q3x.html` with the default token from the repo's `SUPERADMIN_HASH` (ask the repo owner for it, or compute it), then use **Change superadmin token**. From that moment only your token works. You can verify the change by signing out and confirming the old token is refused.
 
 ---
 
