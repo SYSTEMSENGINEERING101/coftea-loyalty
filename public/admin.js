@@ -689,11 +689,11 @@ function buildSlips(batch, codes) {
   const root = el('print-root');
   root.replaceChildren();
 
-  // Codes only, edge to edge: five across, or one cell per code when printing
-  // just a few. No page width is forced — the grid fills whatever paper the
-  // print dialog uses, so a 58 mm setting can never leave a blank strip on an
-  // 80 mm roll again.
-  const cols = Math.min(5, codes.length);
+  // Codes only: four across, or one cell per code when printing just a few.
+  // No page width is forced — the grid fills whatever paper the print dialog
+  // uses, with equal 2 mm margins left and right, so a 58 mm setting can never
+  // leave a blank strip on an 80 mm roll again.
+  const cols = Math.min(4, codes.length);
 
   const grid = document.createElement('div');
   grid.className = 'pos-grid';
@@ -712,12 +712,14 @@ function buildSlips(batch, codes) {
   root.appendChild(grid);
 
   // Absolute size for browsers without container units: assume 80 mm paper.
-  // The fraction keeps a 0.9 mm gap between codes at any paper width.
+  // Side padding matches .pos-grid (2 mm each side in styles.css); the type is
+  // a fraction of that usable width so four codes always fill it exactly.
   const advance = measureAdvance();
   const designMm = 80;
-  const sizeMm = (designMm / cols - 0.9) / advance;
+  const usableMm = designMm - 4;
+  const sizeMm = (usableMm / cols - 0.9) / advance;
   grid.style.setProperty('--code-size', `${((sizeMm / 25.4) * 96).toFixed(2)}px`);
-  setPageSize(sizeMm / designMm);
+  setPageSize(sizeMm / usableMm);
 }
 
 // Width of a seven-digit code per 1 px of font size, measured with the font
@@ -743,7 +745,7 @@ function setPageSize(sizeFraction) {
   }
   // No @page size: the page stays whatever paper the printer reports, so the
   // grid can never sit in a 58 mm strip on an 80 mm roll. The type is a
-  // fraction of the real page width, so five codes always span it completely.
+  // fraction of the real grid width, so four codes always span it completely.
   style.textContent = `@media print {
   @page { margin: 0; }
   #print-root { width: 100%; }

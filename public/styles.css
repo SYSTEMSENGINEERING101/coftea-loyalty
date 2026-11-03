@@ -1600,8 +1600,10 @@ td.right {
 }
 
 .pos-grid {
+  box-sizing: border-box;
   display: grid;
   width: 100%;
+  padding: 0 2mm;
   container-type: inline-size;
 }
 
@@ -1611,7 +1613,7 @@ td.right {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.6mm 0;
+  padding: 3.8mm 0;
   border-bottom: 0.2mm solid #c4c4c4;
   color: #000;
   break-inside: avoid;
@@ -1643,10 +1645,11 @@ td.right {
   }
 
   #print-root {
+    box-sizing: border-box;
     display: block;
     width: 100%;
     margin: 0;
-    padding: 0;
+    padding: 2mm 0;
   }
 }
 

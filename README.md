@@ -138,7 +138,7 @@ Cloudflare dashboard → Workers & Pages → `coftea-loyalty` → Custom domains
 4. Print either:
    - that many codes from a batch — **Print** on the batch row (takes the first unused codes in the batch), or
    - only specific codes — tick codes in the **Codes** table and press **Print selected**. Used codes cannot be ticked.
-5. Printing is codes only: **five across**, edge to edge, with the digits automatically enlarged to the widest size each cell allows (~13 pt on 80 mm). No page width is forced, so the grid fills the paper the printer reports — it cannot leave a blank strip on the roll. Rows have one thin grey cut line and no vertical or outer lines; long runs continue onto the next page. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
+5. Printing is codes only: **four across**, centred with equal 2 mm margins left and right, with the digits automatically enlarged to the widest size each cell allows (~16 pt on 80 mm). No page width is forced, so the grid fills the paper the printer reports — it cannot leave a blank strip on the roll. Rows are generously spaced with one thin grey cut line and no vertical or outer lines; long runs continue onto the next page. In the print dialog pick your receipt printer, **100% scale**, and set margins to **None**.
 6. Cut the grid into individual codes and hand one per drink.
 7. Print a QR code pointing at the site root and put it on the counter / table tent.
 8. Customer scans, gets a card instantly (saved on their phone), and types the code into the next slot.
@@ -189,7 +189,7 @@ Codes are never hashed — a 7-digit space is brute-forceable from a hash anyway
 ## 7. Printing notes
 
 - Paper is POS receipt roll: `58 mm` (small) or `80 mm` (standard). Set the printer's paper width to match, and print at 100% with no margins.
-- The printout is codes only — no café name, no instructions, no expiry. Codes run edge to edge in a clean grid: **five across**, no vertical or outer lines, and a single light rule under each row as a cutting guide. The digits are sized automatically to the widest that fits a cell (roughly 13 pt on 80 mm with a condensed face).
+- The printout is codes only — no café name, no instructions, no expiry. Codes run across the paper in a clean, centred grid: **four across**, 2 mm margins each side, no vertical or outer lines, and a single light rule under each row as a cutting guide. The digits are sized automatically to the widest that fits a cell (roughly 16 pt on 80 mm with a condensed face), with 3.8 mm of breathing room above and below each row.
 - There is no receipt-width setting: the grid measures the page the printer reports and fills it. The same sheet prints correctly on 80 mm, 58 mm or A4 paper; only the digit size changes.
 - Long batches simply flow onto the next page; rows never split in half.
 - Printing a batch produces the number of codes chosen in **Codes to print** (default 1); printing a selection produces one cell per ticked code. Hand over exactly the codes you printed.
